@@ -28,15 +28,16 @@ jobs:
           tar -xf javafx.zip
 
       - name: Create Windows EXE with jpackage
-        run: |
-          jpackage ^
-            --type exe ^
-            --name TechPasport ^
-            --input target ^
-            --main-jar TechPasport-1.0-SNAPSHOT.jar ^
-            --main-class zakir.alekperov.bootstrap.ApplicationLauncher ^
-            --java-options "--module-path javafx-sdk-21.0.1/lib --add-modules javafx.controls,javafx.fxml" ^
-            --dest dist
+        run: >
+          jpackage
+          --type exe
+          --name TechPasport
+          --input target
+          --main-jar TechPasport-1.0-SNAPSHOT.jar
+          --main-class zakir.alekperov.bootstrap.ApplicationLauncher
+          --java-options "--module-path javafx-sdk-21.0.1/lib --add-modules javafx.controls,javafx.fxml"
+          --dest dist
+      
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
