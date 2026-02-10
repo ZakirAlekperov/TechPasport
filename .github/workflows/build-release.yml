@@ -1,0 +1,87 @@
+name: Build Native Installers
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'maven'
+    
+    - name: Build with Maven
+      run: mvn clean package
+      
+    - name: Create macOS App Bundle
+      run: |
+        jpackage \
+          --input target/ \
+          --name TechPasport \
+          --main-jar TechPasport-1.0-SNAPSHOT.jar \
+          --main-class zakir.alekperov.bootstrap.ApplicationLauncher \
+          --type dmg \
+          --app-version 1.0 \
+          --vendor "Zakir Alekperov" \
+          --mac-package-name "TechPasport" \
+          --icon src/main/resources/icons/icns.icns \
+          --dest installer/macos
+          
+    - name: Upload macOS Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: TechPasport-macOS
+        path: installer/macos/*.dmg
+        retention-days: 30
+
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'maven'
+    
+    - name: Build with Maven
+      run: mvn clean package
+      
+    - name: Create Windows Installer
+      run: |
+        jpackage `
+          --input target/ `
+          --name TechPasport `
+          --main-jar TechPasport-1.0-SNAPSHOT.jar `
+          --main-class zakir.alekperov.bootstrap.ApplicationLauncher `
+          --type msi `
+          --app-version 1.0 `
+          --vendor "Zakir Alekperov" `
+          --win-dir-chooser `
+          --win-menu `
+          --win-shortcut `
+          --icon src/main/resources/icons/ico.ico `
+          --dest installer/windows
+          
+    - name: Upload Windows Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: TechPasport-Windows
+        path: installer/windows/*.msi
+        retention-days: 30
