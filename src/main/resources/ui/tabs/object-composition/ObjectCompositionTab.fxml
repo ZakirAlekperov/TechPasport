@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="zakir.alekperov.ui.tabs.objectcomposition.ObjectCompositionTabController">
+
+    <top>
+        <ToolBar>
+            <Button text="Добавить" onAction="#onAddRow"/>
+            <Button text="Удалить" onAction="#onRemoveRow"/>
+        </ToolBar>
+    </top>
+
+    <center>
+        <TableView fx:id="tableView" editable="true">
+            <columns>
+                <TableColumn fx:id="nameColumn" text="Наименование"/>
+                <TableColumn fx:id="purposeColumn" text="Назначение"/>
+                <TableColumn fx:id="areaColumn" text="Площадь"/>
+                <TableColumn fx:id="floorsColumn" text="Этажность"/>
+                <TableColumn fx:id="noteColumn" text="Примечание"/>
+            </columns>
+        </TableView>
+    </center>
+
+</BorderPane>

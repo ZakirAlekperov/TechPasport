@@ -15,6 +15,10 @@ public class ApplicationLauncher extends Application {
         );
 
         Scene scene = new Scene(loader.load(), 1200, 800);
+        
+        scene.getStylesheets().add(
+            getClass().getResource("/ui/styles/app.css").toExternalForm()
+        );
 
         stage.setTitle("TechPasport");
         stage.setScene(scene);
