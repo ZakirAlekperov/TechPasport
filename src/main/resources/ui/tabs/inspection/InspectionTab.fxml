@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="zakir.alekperov.ui.tabs.inspection.InspectionTabController"
+      spacing="15" style="-fx-padding: 20;">
+    
+    <!-- Заголовок -->
+    <Label text="8. Отметки об обследованиях и ремонтах" 
+           style="-fx-font-size: 20; -fx-font-weight: bold;"/>
+    
+    <Separator/>
+    
+    <!-- Описание -->
+    <Label text="История технических обследований и ремонтных работ" 
+           style="-fx-font-size: 14; -fx-text-fill: #666666;"/>
+    
+    <!-- Панель управления -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Button text="Добавить запись" onAction="#handleAddInspection" 
+                style="-fx-min-width: 130;"/>
+        <Button text="Редактировать" onAction="#handleEditInspection" 
+                style="-fx-min-width: 120;"/>
+        <Button text="Удалить" onAction="#handleDeleteInspection" 
+                style="-fx-min-width: 120;"/>
+        
+        <Separator orientation="VERTICAL"/>
+        
+        <Label text="Фильтр по типу:"/>
+        <ComboBox fx:id="typeFilterCombo" prefWidth="150" 
+                  promptText="Все типы"/>
+        
+        <Region HBox.hgrow="ALWAYS"/>
+        
+        <Label text="Всего записей:"/>
+        <Label fx:id="totalInspectionsLabel" text="0" 
+               style="-fx-font-weight: bold;"/>
+    </HBox>
+    
+    <!-- Таблица обследований -->
+    <TableView fx:id="inspectionsTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="dateColumn" text="Дата" prefWidth="100" minWidth="90"/>
+            <TableColumn fx:id="typeColumn" text="Тип работ" prefWidth="150" minWidth="120"/>
+            <TableColumn fx:id="organizationColumn" text="Организация" prefWidth="200" minWidth="150"/>
+            <TableColumn fx:id="documentColumn" text="Документ" prefWidth="150" minWidth="120"/>
+            <TableColumn fx:id="defectsColumn" text="Выявленные дефекты" prefWidth="250" minWidth="200"/>
+            <TableColumn fx:id="recommendationsColumn" text="Рекомендации" prefWidth="250" minWidth="200"/>
+            <TableColumn fx:id="statusColumn" text="Статус" prefWidth="120" minWidth="100"/>
+        </columns>
+        
+        <placeholder>
+            <Label text="Нет данных. Нажмите 'Добавить запись' для начала работы"/>
+        </placeholder>
+    </TableView>
+    
+    <!-- Сводная информация -->
+    <GridPane hgap="30" vgap="10" 
+              style="-fx-padding: 15; -fx-background-color: #f5f5f5; -fx-background-radius: 5;">
+        <columnConstraints>
+            <ColumnConstraints percentWidth="33"/>
+            <ColumnConstraints percentWidth="33"/>
+            <ColumnConstraints percentWidth="34"/>
+        </columnConstraints>
+        
+        <VBox spacing="5" GridPane.columnIndex="0">
+            <Label text="Последнее обследование:" style="-fx-font-weight: bold;"/>
+            <Label fx:id="lastInspectionLabel" text="Не проводилось" 
+                   style="-fx-text-fill: #666666;"/>
+        </VBox>
+        
+        <VBox spacing="5" GridPane.columnIndex="1">
+            <Label text="Последний ремонт:" style="-fx-font-weight: bold;"/>
+            <Label fx:id="lastRepairLabel" text="Не проводился" 
+                   style="-fx-text-fill: #666666;"/>
+        </VBox>
+        
+        <VBox spacing="5" GridPane.columnIndex="2">
+            <Label text="Требуется внимание:" style="-fx-font-weight: bold;"/>
+            <Label fx:id="attentionRequiredLabel" text="0 записей" 
+                   style="-fx-text-fill: #666666;"/>
+        </VBox>
+    </GridPane>
+    
+    <!-- Примечание -->
+    <VBox spacing="5">
+        <Label text="Общее примечание" style="-fx-font-weight: bold;"/>
+        <TextArea fx:id="generalNotesArea" prefRowCount="3" wrapText="true" 
+                  promptText="Общая информация о состоянии объекта"/>
+    </VBox>
+    
+    <!-- Кнопки действий -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button text="Очистить" onAction="#handleClear" style="-fx-min-width: 100;"/>
+        <Button text="Сохранить" onAction="#handleSave" style="-fx-min-width: 100;"/>
+    </HBox>
+    
+</VBox>

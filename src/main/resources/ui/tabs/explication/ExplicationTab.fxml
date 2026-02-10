@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="zakir.alekperov.ui.tabs.explication.ExplicationTabController"
+      spacing="15" style="-fx-padding: 20;">
+    
+    <!-- Заголовок -->
+    <Label text="7. Экспликация помещений" 
+           style="-fx-font-size: 20; -fx-font-weight: bold;"/>
+    
+    <Separator/>
+    
+    <!-- Описание -->
+    <Label text="Сводная таблица помещений с указанием назначения и площадей" 
+           style="-fx-font-size: 14; -fx-text-fill: #666666;"/>
+    
+    <!-- Информационная панель -->
+    <HBox spacing="20" style="-fx-padding: 10; -fx-background-color: #e3f2fd; -fx-background-radius: 5;">
+        <Label text="ℹ️" style="-fx-font-size: 18;"/>
+        <VBox spacing="5">
+            <Label text="Данные автоматически загружаются из раздела 'Поэтажный план'" 
+                   style="-fx-font-weight: bold;"/>
+            <Label text="Для изменения данных перейдите в раздел 6 'Поэтажный план и экспликация'" 
+                   style="-fx-text-fill: #666666;"/>
+        </VBox>
+    </HBox>
+    
+    <!-- Панель фильтров -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Группировать по:"/>
+        <ComboBox fx:id="groupByCombo" prefWidth="150"/>
+        
+        <Separator orientation="VERTICAL"/>
+        
+        <Label text="Фильтр по типу:"/>
+        <ComboBox fx:id="purposeFilterCombo" prefWidth="150" 
+                  promptText="Все типы"/>
+        
+        <Region HBox.hgrow="ALWAYS"/>
+        
+        <Button text="Экспорт в Excel" onAction="#handleExport" 
+                style="-fx-min-width: 120;"/>
+    </HBox>
+    
+    <!-- Таблица экспликации -->
+    <TableView fx:id="explicationTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="literaColumn" text="Литера" prefWidth="70" minWidth="60"/>
+            <TableColumn fx:id="floorColumn" text="Этаж" prefWidth="70" minWidth="60"/>
+            <TableColumn fx:id="roomNumberColumn" text="№" prefWidth="70" minWidth="60"/>
+            <TableColumn fx:id="purposeColumn" text="Назначение" prefWidth="250" minWidth="200"/>
+            <TableColumn fx:id="areaColumn" text="Площадь, кв.м" prefWidth="120" minWidth="100"/>
+            <TableColumn fx:id="categoryColumn" text="Категория" prefWidth="150" minWidth="120"/>
+        </columns>
+        
+        <placeholder>
+            <VBox spacing="10" alignment="CENTER">
+                <Label text="Нет данных" style="-fx-font-size: 16; -fx-text-fill: #999999;"/>
+                <Label text="Добавьте помещения в разделе 'Поэтажный план'" 
+                       style="-fx-text-fill: #666666;"/>
+            </VBox>
+        </placeholder>
+    </TableView>
+    
+    <!-- Сводная информация -->
+    <GridPane hgap="30" vgap="10" 
+              style="-fx-padding: 15; -fx-background-color: #f5f5f5; -fx-background-radius: 5;">
+        <columnConstraints>
+            <ColumnConstraints percentWidth="50"/>
+            <ColumnConstraints percentWidth="50"/>
+        </columnConstraints>
+        
+        <!-- Левая колонка -->
+        <VBox spacing="8" GridPane.columnIndex="0" GridPane.rowIndex="0">
+            <Label text="Площади по категориям" 
+                   style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+            
+            <HBox spacing="10">
+                <Label text="Жилая площадь:" style="-fx-min-width: 180;"/>
+                <Label fx:id="livingAreaLabel" text="0.00 кв.м" style="-fx-font-weight: bold;"/>
+            </HBox>
+            
+            <HBox spacing="10">
+                <Label text="Вспомогательная площадь:" style="-fx-min-width: 180;"/>
+                <Label fx:id="auxiliaryAreaLabel" text="0.00 кв.м" style="-fx-font-weight: bold;"/>
+            </HBox>
+            
+            <HBox spacing="10">
+                <Label text="Общая площадь:" style="-fx-min-width: 180;"/>
+                <Label fx:id="totalAreaLabel" text="0.00 кв.м" 
+                       style="-fx-font-weight: bold; -fx-font-size: 14;"/>
+            </HBox>
+        </VBox>
+        
+        <!-- Правая колонка -->
+        <VBox spacing="8" GridPane.columnIndex="1" GridPane.rowIndex="0">
+            <Label text="Количество помещений" 
+                   style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+            
+            <HBox spacing="10">
+                <Label text="Жилых помещений:" style="-fx-min-width: 180;"/>
+                <Label fx:id="livingRoomsCountLabel" text="0" style="-fx-font-weight: bold;"/>
+            </HBox>
+            
+            <HBox spacing="10">
+                <Label text="Вспомогательных помещений:" style="-fx-min-width: 180;"/>
+                <Label fx:id="auxiliaryRoomsCountLabel" text="0" style="-fx-font-weight: bold;"/>
+            </HBox>
+            
+            <HBox spacing="10">
+                <Label text="Всего помещений:" style="-fx-min-width: 180;"/>
+                <Label fx:id="totalRoomsCountLabel" text="0" 
+                       style="-fx-font-weight: bold; -fx-font-size: 14;"/>
+            </HBox>
+        </VBox>
+    </GridPane>
+    
+    <!-- Кнопки действий -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button text="Обновить данные" onAction="#handleRefresh" style="-fx-min-width: 120;"/>
+        <Button text="Печать" onAction="#handlePrint" style="-fx-min-width: 100;"/>
+    </HBox>
+    
+</VBox>

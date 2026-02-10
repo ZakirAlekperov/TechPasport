@@ -1,29 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx/21"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="zakir.alekperov.ui.tabs.objectcomposition.ObjectCompositionTabController">
-
-    <top>
-        <ToolBar>
-            <Button text="Добавить" onAction="#onAddRow"/>
-            <Button text="Удалить" onAction="#onRemoveRow"/>
-        </ToolBar>
-    </top>
-
-    <center>
-        <TableView fx:id="tableView" editable="true">
-            <columns>
-                <TableColumn fx:id="nameColumn" text="Наименование"/>
-                <TableColumn fx:id="purposeColumn" text="Назначение"/>
-                <TableColumn fx:id="areaColumn" text="Площадь"/>
-                <TableColumn fx:id="floorsColumn" text="Этажность"/>
-                <TableColumn fx:id="noteColumn" text="Примечание"/>
-            </columns>
-        </TableView>
-    </center>
-
-</BorderPane>
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="zakir.alekperov.ui.tabs.objectcomposition.ObjectCompositionTabController"
+      spacing="15" style="-fx-padding: 20;">
+    
+    <!-- Заголовок -->
+    <Label text="2. Состав объекта" 
+           style="-fx-font-size: 20; -fx-font-weight: bold;"/>
+    
+    <Separator/>
+    
+    <!-- Описание -->
+    <Label text="Перечень зданий и сооружений на земельном участке" 
+           style="-fx-font-size: 14; -fx-text-fill: #666666;"/>
+    
+    <!-- Панель управления -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Button text="Добавить здание" onAction="#handleAddBuilding" 
+                style="-fx-min-width: 120;"/>
+        <Button text="Редактировать" onAction="#handleEditBuilding" 
+                style="-fx-min-width: 120;"/>
+        <Button text="Удалить" onAction="#handleDeleteBuilding" 
+                style="-fx-min-width: 120;"/>
+        
+        <Region HBox.hgrow="ALWAYS"/>
+        
+        <Label text="Всего зданий:"/>
+        <Label fx:id="totalBuildingsLabel" text="0" 
+               style="-fx-font-weight: bold;"/>
+    </HBox>
+    
+    <!-- Таблица зданий -->
+    <TableView fx:id="buildingsTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="literaColumn" text="Литера" prefWidth="80" minWidth="60"/>
+            <TableColumn fx:id="nameColumn" text="Наименование" prefWidth="200" minWidth="150"/>
+            <TableColumn fx:id="yearColumn" text="Год постройки" prefWidth="100" minWidth="80"/>
+            <TableColumn fx:id="wallMaterialColumn" text="Материал стен" prefWidth="150" minWidth="120"/>
+            <TableColumn fx:id="areaColumn" text="Площадь застройки, кв.м" prefWidth="120" minWidth="100"/>
+            <TableColumn fx:id="heightColumn" text="Высота, м" prefWidth="100" minWidth="80"/>
+            <TableColumn fx:id="volumeColumn" text="Объем, куб.м" prefWidth="100" minWidth="80"/>
+            <TableColumn fx:id="costColumn" text="Инвент. стоимость, руб." prefWidth="150" minWidth="120"/>
+        </columns>
+        
+        <placeholder>
+            <Label text="Нет данных. Нажмите 'Добавить здание' для начала работы"/>
+        </placeholder>
+    </TableView>
+    
+    <!-- Итоговая информация -->
+    <HBox spacing="20" style="-fx-padding: 10; -fx-background-color: #f0f0f0; -fx-background-radius: 5;">
+        <VBox spacing="5">
+            <Label text="Общая площадь застройки:" style="-fx-font-weight: bold;"/>
+            <Label fx:id="totalAreaLabel" text="0.00 кв.м" style="-fx-font-size: 14;"/>
+        </VBox>
+        
+        <VBox spacing="5">
+            <Label text="Общий объем:" style="-fx-font-weight: bold;"/>
+            <Label fx:id="totalVolumeLabel" text="0.00 куб.м" style="-fx-font-size: 14;"/>
+        </VBox>
+        
+        <VBox spacing="5">
+            <Label text="Общая стоимость:" style="-fx-font-weight: bold;"/>
+            <Label fx:id="totalCostLabel" text="0.00 руб." style="-fx-font-size: 14;"/>
+        </VBox>
+    </HBox>
+    
+    <!-- Кнопки действий -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button text="Очистить" onAction="#handleClear" style="-fx-min-width: 100;"/>
+        <Button text="Сохранить" onAction="#handleSave" style="-fx-min-width: 100;"/>
+    </HBox>
+    
+</VBox>

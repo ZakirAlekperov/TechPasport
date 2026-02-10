@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="zakir.alekperov.ui.tabs.improvement.ImprovementTabController"
+            fitToWidth="true">
+    
+    <VBox spacing="20" style="-fx-padding: 20;">
+        
+        <!-- Заголовок -->
+        <Label text="5. Благоустройство" 
+               style="-fx-font-size: 20; -fx-font-weight: bold;"/>
+        
+        <Separator/>
+        
+        <!-- Описание -->
+        <Label text="Информация о коммуникациях и инженерных системах" 
+               style="-fx-font-size: 14; -fx-text-fill: #666666;"/>
+        
+        <!-- Водоснабжение -->
+        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #f9f9f9; -fx-background-radius: 5;">
+            <Label text="Водоснабжение" 
+                   style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+            
+            <HBox spacing="20">
+                <CheckBox fx:id="centralWaterCheckBox" text="Центральное"/>
+                <CheckBox fx:id="autonomousWaterCheckBox" text="Автономное"/>
+                <CheckBox fx:id="noWaterCheckBox" text="Отсутствует"/>
+            </HBox>
+            
+            <GridPane hgap="10" vgap="10">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="200" prefWidth="200"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+                
+                <Label text="Площадь, обеспеченная водой (кв.м):" 
+                       GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <TextField fx:id="waterAreaField" 
+                           GridPane.rowIndex="0" GridPane.columnIndex="1" 
+                           prefWidth="150" promptText="0.00"/>
+            </GridPane>
+        </VBox>
+        
+        <!-- Канализация -->
+        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #f9f9f9; -fx-background-radius: 5;">
+            <Label text="Канализация" 
+                   style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+            
+            <HBox spacing="20">
+                <CheckBox fx:id="centralSewerageCheckBox" text="Центральная"/>
+                <CheckBox fx:id="autonomousSewerageCheckBox" text="Автономная (септик)"/>
+                <CheckBox fx:id="noSewerageCheckBox" text="Отсутствует"/>
+            </HBox>
+            
+            <GridPane hgap="10" vgap="10">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="200" prefWidth="200"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+                
+                <Label text="Площадь с канализацией (кв.м):" 
+                       GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <TextField fx:id="sewerageAreaField" 
+                           GridPane.rowIndex="0" GridPane.columnIndex="1" 
+                           prefWidth="150" promptText="0.00"/>
+            </GridPane>
+        </VBox>
+        
+        <!-- Отопление -->
+        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #f9f9f9; -fx-background-radius: 5;">
+            <Label text="Отопление" 
+                   style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+            
+            <HBox spacing="20">
+                <CheckBox fx:id="centralHeatingCheckBox" text="Центральное"/>
+                <CheckBox fx:id="autonomousHeatingCheckBox" text="Автономное"/>
+                <CheckBox fx:id="stoveHeatingCheckBox" text="Печное"/>
+                <CheckBox fx:id="noHeatingCheckBox" text="Отсутствует"/>
+            </HBox>
+            
+            <GridPane hgap="10" vgap="10">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="200" prefWidth="200"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+                
+                <Label text="Отапливаемая площадь (кв.м):" 
+                       GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <TextField fx:id="heatingAreaField" 
+                           GridPane.rowIndex="0" GridPane.columnIndex="1" 
+                           prefWidth="150" promptText="0.00"/>
+            </GridPane>
+        </VBox>
+        
+        <!-- Горячее водоснабжение -->
+        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #f9f9f9; -fx-background-radius: 5;">
+            <Label text="Горячее водоснабжение" 
+                   style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+            
+            <HBox spacing="20">
+                <CheckBox fx:id="centralHotWaterCheckBox" text="Центральное"/>
+                <CheckBox fx:id="autonomousHotWaterCheckBox" text="Автономное (бойлер)"/>
+                <CheckBox fx:id="noHotWaterCheckBox" text="Отсутствует"/>
+            </HBox>
+            
+            <GridPane hgap="10" vgap="10">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="200" prefWidth="200"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+                
+                <Label text="Площадь с ГВС (кв.м):" 
+                       GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <TextField fx:id="hotWaterAreaField" 
+                           GridPane.rowIndex="0" GridPane.columnIndex="1" 
+                           prefWidth="150" promptText="0.00"/>
+            </GridPane>
+        </VBox>
+        
+        <!-- Газоснабжение -->
+        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #f9f9f9; -fx-background-radius: 5;">
+            <Label text="Газоснабжение" 
+                   style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+            
+            <HBox spacing="20">
+                <CheckBox fx:id="centralGasCheckBox" text="Центральное (природный газ)"/>
+                <CheckBox fx:id="autonomousGasCheckBox" text="Автономное (баллонный)"/>
+                <CheckBox fx:id="noGasCheckBox" text="Отсутствует"/>
+            </HBox>
+            
+            <GridPane hgap="10" vgap="10">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="200" prefWidth="200"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+                
+                <Label text="Площадь с газом (кв.м):" 
+                       GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <TextField fx:id="gasAreaField" 
+                           GridPane.rowIndex="0" GridPane.columnIndex="1" 
+                           prefWidth="150" promptText="0.00"/>
+            </GridPane>
+        </VBox>
+        
+        <!-- Электроснабжение -->
+        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #f9f9f9; -fx-background-radius: 5;">
+            <Label text="Электроснабжение" 
+                   style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+            
+            <HBox spacing="20">
+                <CheckBox fx:id="electricityCheckBox" text="Имеется" selected="true"/>
+            </HBox>
+            
+            <GridPane hgap="10" vgap="10">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="200" prefWidth="200"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+                
+                <Label text="Электрифицированная площадь (кв.м):" 
+                       GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <TextField fx:id="electricityAreaField" 
+                           GridPane.rowIndex="0" GridPane.columnIndex="1" 
+                           prefWidth="150" promptText="0.00"/>
+                
+                <Label text="Выделенная мощность (кВт):" 
+                       GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                <TextField fx:id="electricityPowerField" 
+                           GridPane.rowIndex="1" GridPane.columnIndex="1" 
+                           prefWidth="150" promptText="15"/>
+            </GridPane>
+        </VBox>
+        
+        <Separator/>
+        
+        <!-- Примечание -->
+        <VBox spacing="5">
+            <Label text="Примечание" style="-fx-font-weight: bold;"/>
+            <TextArea fx:id="notesArea" prefRowCount="3" wrapText="true" 
+                      promptText="Дополнительная информация о коммуникациях"/>
+        </VBox>
+        
+        <!-- Кнопки действий -->
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button text="Очистить" onAction="#handleClear" style="-fx-min-width: 100;"/>
+            <Button text="Сохранить" onAction="#handleSave" style="-fx-min-width: 100;"/>
+        </HBox>
+        
+    </VBox>
+    
+</ScrollPane>

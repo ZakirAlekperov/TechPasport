@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="zakir.alekperov.ui.tabs.owners.OwnersTabController"
+      spacing="15" style="-fx-padding: 20;">
+    
+    <!-- Заголовок -->
+    <Label text="3. Сведения о правообладателях" 
+           style="-fx-font-size: 20; -fx-font-weight: bold;"/>
+    
+    <Separator/>
+    
+    <!-- Описание -->
+    <Label text="Информация о владельцах объекта недвижимости" 
+           style="-fx-font-size: 14; -fx-text-fill: #666666;"/>
+    
+    <!-- Панель управления -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Button text="Добавить правообладателя" onAction="#handleAddOwner" 
+                style="-fx-min-width: 150;"/>
+        <Button text="Редактировать" onAction="#handleEditOwner" 
+                style="-fx-min-width: 120;"/>
+        <Button text="Удалить" onAction="#handleDeleteOwner" 
+                style="-fx-min-width: 120;"/>
+        
+        <Region HBox.hgrow="ALWAYS"/>
+        
+        <Label text="Всего записей:"/>
+        <Label fx:id="totalOwnersLabel" text="0" 
+               style="-fx-font-weight: bold;"/>
+    </HBox>
+    
+    <!-- Таблица правообладателей -->
+    <TableView fx:id="ownersTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="dateColumn" text="Дата регистрации" prefWidth="120" minWidth="100"/>
+            <TableColumn fx:id="documentNumberColumn" text="№ документа" prefWidth="120" minWidth="100"/>
+            <TableColumn fx:id="nameColumn" text="ФИО / Наименование организации" prefWidth="250" minWidth="200"/>
+            <TableColumn fx:id="rightsTypeColumn" text="Вид права" prefWidth="150" minWidth="120"/>
+            <TableColumn fx:id="shareColumn" text="Доля" prefWidth="100" minWidth="80"/>
+            <TableColumn fx:id="notesColumn" text="Примечание" prefWidth="200" minWidth="150"/>
+        </columns>
+        
+        <placeholder>
+            <Label text="Нет данных. Нажмите 'Добавить правообладателя' для начала работы"/>
+        </placeholder>
+    </TableView>
+    
+    <!-- Информация о долях -->
+    <HBox spacing="20" style="-fx-padding: 10; -fx-background-color: #f0f0f0; -fx-background-radius: 5;">
+        <VBox spacing="5">
+            <Label text="Сумма долей:" style="-fx-font-weight: bold;"/>
+            <Label fx:id="totalShareLabel" text="0/1" style="-fx-font-size: 14;"/>
+        </VBox>
+        
+        <VBox spacing="5">
+            <Label text="Статус:" style="-fx-font-weight: bold;"/>
+            <Label fx:id="shareStatusLabel" text="Не заполнено" style="-fx-font-size: 14;"/>
+        </VBox>
+    </HBox>
+    
+    <!-- Кнопки действий -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button text="Очистить" onAction="#handleClear" style="-fx-min-width: 100;"/>
+        <Button text="Сохранить" onAction="#handleSave" style="-fx-min-width: 100;"/>
+    </HBox>
+    
+</VBox>
