@@ -25,10 +25,17 @@ jobs:
     - name: Build with Maven
       run: mvn clean package
       
+    - name: Verify build
+      run: |
+        echo "=== Main JAR ==="
+        ls -lh target/*.jar
+        echo "=== Dependencies ==="
+        ls -lh target/libs/
+      
     - name: Create macOS App Bundle
       run: |
         jpackage \
-          --input target/ \
+          --input target \
           --name TechPasport \
           --main-jar TechPasport-1.0-SNAPSHOT.jar \
           --main-class zakir.alekperov.bootstrap.ApplicationLauncher \
@@ -37,6 +44,7 @@ jobs:
           --vendor "Zakir Alekperov" \
           --mac-package-name "TechPasport" \
           --icon src/main/resources/icons/icns.icns \
+          --java-options '--module-path $APPDIR/libs --add-modules javafx.controls,javafx.fxml' \
           --dest installer/macos
           
     - name: Upload macOS Installer
@@ -63,10 +71,17 @@ jobs:
     - name: Build with Maven
       run: mvn clean package
       
+    - name: Verify build
+      run: |
+        echo "=== Main JAR ==="
+        dir target\*.jar
+        echo "=== Dependencies ==="
+        dir target\libs\
+      
     - name: Create Windows Installer
       run: |
         jpackage `
-          --input target/ `
+          --input target `
           --name TechPasport `
           --main-jar TechPasport-1.0-SNAPSHOT.jar `
           --main-class zakir.alekperov.bootstrap.ApplicationLauncher `
@@ -77,6 +92,7 @@ jobs:
           --win-menu `
           --win-shortcut `
           --icon src/main/resources/icons/ico.ico `
+          --java-options "--module-path `$APPDIR/libs --add-modules javafx.controls,javafx.fxml" `
           --dest installer/windows
           
     - name: Upload Windows Installer
