@@ -78,19 +78,20 @@ jobs:
         echo "=== Dependencies ==="
         dir target\libs\
       
-    - name: Create Windows Installer
+    - name: Create Windows EXE Installer
       run: |
         jpackage `
           --input target `
           --name TechPasport `
           --main-jar TechPasport-1.0-SNAPSHOT.jar `
           --main-class zakir.alekperov.bootstrap.ApplicationLauncher `
-          --type msi `
+          --type exe `
           --app-version 1.0 `
           --vendor "Zakir Alekperov" `
           --win-dir-chooser `
           --win-menu `
           --win-shortcut `
+          --win-menu-group "TechPasport" `
           --icon src/main/resources/icons/ico.ico `
           --java-options "--module-path `$APPDIR/libs --add-modules javafx.controls,javafx.fxml" `
           --dest installer/windows
@@ -98,6 +99,6 @@ jobs:
     - name: Upload Windows Installer
       uses: actions/upload-artifact@v4
       with:
-        name: TechPasport-Windows
-        path: installer/windows/*.msi
+        name: TechPasport-Windows-EXE
+        path: installer/windows/*.exe
         retention-days: 30
