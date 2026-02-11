@@ -10,7 +10,7 @@ import zakir.alekperov.application.locationplan.LocationPlanDTO;
 import java.util.List;
 
 /**
- * Класс для визуализации зданий на Canvas с поддержкой выделения, hover и редактирования точек.
+ * Класс для визуализации зданий на Canvas с координатной сеткой, выделением и редактированием.
  */
 public class BuildingVisualizer {
     
@@ -20,7 +20,9 @@ public class BuildingVisualizer {
     
     // Цвета
     private static final Color BACKGROUND_COLOR = Color.rgb(250, 250, 250);
-    private static final Color GRID_COLOR = Color.rgb(220, 220, 220);
+    private static final Color GRID_MAJOR_COLOR = Color.rgb(180, 180, 180);
+    private static final Color GRID_MINOR_COLOR = Color.rgb(220, 220, 220);
+    private static final Color GRID_TEXT_COLOR = Color.rgb(100, 100, 100);
     private static final Color BUILDING_STROKE_COLOR = Color.rgb(33, 150, 243);
     private static final Color BUILDING_FILL_COLOR = Color.rgb(33, 150, 243, 0.1);
     private static final Color HOVER_STROKE_COLOR = Color.rgb(255, 152, 0);
@@ -37,10 +39,14 @@ public class BuildingVisualizer {
     private static final double POINT_RADIUS = 4.0;
     private static final double POINT_HOVER_RADIUS = 6.0;
     private static final double POINT_DRAG_RADIUS = 8.0;
-    private static final double POINT_CLICK_THRESHOLD = 15.0; // пиксели в canvas
+    private static final double POINT_CLICK_THRESHOLD = 15.0;
     private static final double BUILDING_STROKE_WIDTH = 2.0;
     private static final double HOVER_STROKE_WIDTH = 3.0;
     private static final double SELECTED_STROKE_WIDTH = 3.5;
+    
+    // Настройки сетки
+    private boolean gridVisible = true;
+    private double gridSize = 10.0; // шаг сетки в метрах
     
     // Состояние выделения
     private String selectedBuildingLitera = null;
@@ -60,6 +66,23 @@ public class BuildingVisualizer {
         return transform;
     }
     
+    // Управление сеткой
+    public void setGridVisible(boolean visible) {
+        this.gridVisible = visible;
+    }
+    
+    public boolean isGridVisible() {
+        return gridVisible;
+    }
+    
+    public void setGridSize(double size) {
+        this.gridSize = Math.max(1.0, size);
+    }
+    
+    public double getGridSize() {
+        return gridSize;
+    }
+    
     public void setSelectedBuilding(String litera) {
         this.selectedBuildingLitera = litera;
     }
@@ -76,53 +99,32 @@ public class BuildingVisualizer {
         this.hoveredBuildingLitera = litera;
     }
     
-    /**
-     * Установить точку под курсором (hover).
-     */
     public void setHoveredPoint(PointHandle point) {
         this.hoveredPoint = point;
     }
     
-    /**
-     * Получить точку под курсором.
-     */
     public PointHandle getHoveredPoint() {
         return hoveredPoint;
     }
     
-    /**
-     * Начать перетаскивание точки.
-     */
     public void startDraggingPoint(PointHandle point) {
         this.draggingPoint = point;
     }
     
-    /**
-     * Завершить перетаскивание точки.
-     */
     public PointHandle stopDraggingPoint() {
         PointHandle point = this.draggingPoint;
         this.draggingPoint = null;
         return point;
     }
     
-    /**
-     * Получить перетаскиваемую точку.
-     */
     public PointHandle getDraggingPoint() {
         return draggingPoint;
     }
     
-    /**
-     * Проверить, перетаскивается ли точка.
-     */
     public boolean isDraggingPoint() {
         return draggingPoint != null;
     }
     
-    /**
-     * Обновить позицию перетаскиваемой точки.
-     */
     public void updateDraggingPoint(double canvasX, double canvasY) {
         if (draggingPoint != null) {
             double[] worldCoords = transform.canvasToWorld(canvasX, canvasY);
@@ -131,15 +133,11 @@ public class BuildingVisualizer {
         }
     }
     
-    /**
-     * Найти точку рядом с указанными координатами canvas.
-     */
     public PointHandle findPointAt(double canvasX, double canvasY, List<LocationPlanDTO.BuildingCoordinatesDTO> buildings) {
         if (buildings == null || buildings.isEmpty()) {
             return null;
         }
         
-        // Искать только в выбранном здании
         if (selectedBuildingLitera == null) {
             return null;
         }
@@ -156,7 +154,6 @@ public class BuildingVisualizer {
             return null;
         }
         
-        // Найти ближайшую точку
         List<LocationPlanDTO.CoordinatePointDTO> points = selectedBuilding.points();
         double minDistance = Double.MAX_VALUE;
         PointHandle closestPoint = null;
@@ -264,7 +261,10 @@ public class BuildingVisualizer {
         gc.save();
         transform.apply(gc);
         
-        drawGrid(bounds);
+        // Отрисовать сетку если включена
+        if (gridVisible) {
+            drawGrid(bounds);
+        }
         
         // Сначала отрисовать обычные здания
         for (LocationPlanDTO.BuildingCoordinatesDTO building : buildings) {
@@ -332,18 +332,47 @@ public class BuildingVisualizer {
         return new Bounds(minX, maxX, minY, maxY);
     }
     
+    /**
+     * Отрисовка координатной сетки с подписями.
+     */
     private void drawGrid(Bounds bounds) {
-        gc.setStroke(GRID_COLOR);
-        gc.setLineWidth(0.5 / transform.getScale());
+        // Расширяем границы до ближайших кратных gridSize
+        double startX = Math.floor(bounds.minX / gridSize) * gridSize;
+        double endX = Math.ceil(bounds.maxX / gridSize) * gridSize;
+        double startY = Math.floor(bounds.minY / gridSize) * gridSize;
+        double endY = Math.ceil(bounds.maxY / gridSize) * gridSize;
         
-        double gridSize = 10.0;
+        // Размер шрифта зависит от масштаба
+        double fontSize = 8.0 / transform.getScale();
+        gc.setFont(Font.font("System", FontWeight.NORMAL, fontSize));
+        gc.setFill(GRID_TEXT_COLOR);
         
-        for (double x = Math.floor(bounds.minX / gridSize) * gridSize; x <= bounds.maxX; x += gridSize) {
-            gc.strokeLine(x, bounds.minY, x, bounds.maxY);
+        // Вертикальные линии
+        for (double x = startX; x <= endX; x += gridSize) {
+            boolean isMajor = (Math.abs(x) % (gridSize * 5) < 0.01);
+            
+            gc.setStroke(isMajor ? GRID_MAJOR_COLOR : GRID_MINOR_COLOR);
+            gc.setLineWidth((isMajor ? 1.0 : 0.5) / transform.getScale());
+            gc.strokeLine(x, startY, x, endY);
+            
+            // Подписи только на главных линиях
+            if (isMajor) {
+                gc.fillText(String.format("%.0f", x), x + 1 / transform.getScale(), startY + 10 / transform.getScale());
+            }
         }
         
-        for (double y = Math.floor(bounds.minY / gridSize) * gridSize; y <= bounds.maxY; y += gridSize) {
-            gc.strokeLine(bounds.minX, y, bounds.maxX, y);
+        // Горизонтальные линии
+        for (double y = startY; y <= endY; y += gridSize) {
+            boolean isMajor = (Math.abs(y) % (gridSize * 5) < 0.01);
+            
+            gc.setStroke(isMajor ? GRID_MAJOR_COLOR : GRID_MINOR_COLOR);
+            gc.setLineWidth((isMajor ? 1.0 : 0.5) / transform.getScale());
+            gc.strokeLine(startX, y, endX, y);
+            
+            // Подписи только на главных линиях
+            if (isMajor) {
+                gc.fillText(String.format("%.0f", y), startX + 1 / transform.getScale(), y - 2 / transform.getScale());
+            }
         }
     }
     
@@ -359,7 +388,6 @@ public class BuildingVisualizer {
         
         for (int i = 0; i < points.size(); i++) {
             try {
-                // Если точка перетаскивается, использовать новые координаты
                 if (draggingPoint != null && 
                     draggingPoint.buildingLitera.equals(building.litera()) && 
                     draggingPoint.pointIndex == i) {
@@ -374,7 +402,6 @@ public class BuildingVisualizer {
             }
         }
         
-        // Выбрать цвета в зависимости от состояния
         Color fillColor, strokeColor;
         double strokeWidth;
         
@@ -395,11 +422,9 @@ public class BuildingVisualizer {
                 strokeWidth = BUILDING_STROKE_WIDTH;
         }
         
-        // Отрисовать заливку
         gc.setFill(fillColor);
         gc.fillPolygon(xPoints, yPoints, points.size());
         
-        // Отрисовать контур
         gc.setStroke(strokeColor);
         gc.setLineWidth(strokeWidth / transform.getScale());
         gc.strokePolygon(xPoints, yPoints, points.size());
@@ -409,14 +434,12 @@ public class BuildingVisualizer {
             Color pointColor = POINT_COLOR;
             double pointRadius = POINT_RADIUS / transform.getScale();
             
-            // Проверить, это перетаскиваемая точка?
             if (draggingPoint != null && 
                 draggingPoint.buildingLitera.equals(building.litera()) && 
                 draggingPoint.pointIndex == i) {
                 pointColor = POINT_DRAG_COLOR;
                 pointRadius = POINT_DRAG_RADIUS / transform.getScale();
             }
-            // Или это точка под курсором?
             else if (hoveredPoint != null && 
                      hoveredPoint.buildingLitera.equals(building.litera()) && 
                      hoveredPoint.pointIndex == i) {
@@ -458,7 +481,10 @@ public class BuildingVisualizer {
                                          bounds.minX, bounds.maxX, bounds.minY, bounds.maxY);
         gc.fillText(boundsInfo, 10, canvas.getHeight() - 20);
         
-        String zoomInfo = String.format("Масштаб: %s", transform.getScalePercent());
+        String zoomInfo = String.format("Масштаб: %s | Сетка: %s (шаг %.0fм)", 
+                                       transform.getScalePercent(), 
+                                       gridVisible ? "ВКЛ" : "ВЫКЛ",
+                                       gridSize);
         gc.fillText(zoomInfo, 10, canvas.getHeight() - 5);
     }
     
@@ -486,9 +512,6 @@ public class BuildingVisualizer {
         }
     }
     
-    /**
-     * Дескриптор точки для редактирования.
-     */
     public static class PointHandle {
         public final String buildingLitera;
         public final int pointIndex;
