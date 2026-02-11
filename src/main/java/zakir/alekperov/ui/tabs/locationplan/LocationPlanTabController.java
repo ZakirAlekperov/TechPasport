@@ -6,12 +6,11 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
-import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import zakir.alekperov.application.locationplan.*;
@@ -20,7 +19,6 @@ import zakir.alekperov.ui.dialogs.AddBuildingDialogController;
 import zakir.alekperov.ui.tabs.base.BaseTabController;
 import zakir.alekperov.ui.visualization.BuildingVisualizer;
 
-import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -28,8 +26,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Контроллер вкладки "Ситуационный план".
- * Зависит только от интерфейсов use cases из application слоя.
+ * Контроллер вкладки "Ситуационный план" с поддержкой zoom/pan.
  */
 public class LocationPlanTabController extends BaseTabController {
     
@@ -51,21 +48,24 @@ public class LocationPlanTabController extends BaseTabController {
     @FXML private Canvas buildingCanvas;
     @FXML private Label canvasPlaceholder;
     
+    // Кнопки управления масштабом
+    @FXML private Button zoomInButton;
+    @FXML private Button zoomOutButton;
+    @FXML private Button zoomResetButton;
+    
     private String currentPassportId;
     private List<LocationPlanDTO.BuildingCoordinatesDTO> currentBuildings = new ArrayList<>();
     private BuildingVisualizer visualizer;
     
-    /**
-     * Пустой конструктор для FXML.
-     * Зависимости будут установлены через setDependencies().
-     */
+    // Для обработки pan (перемещение)
+    private double lastMouseX;
+    private double lastMouseY;
+    private boolean isPanning = false;
+    
     public LocationPlanTabController() {
         // FXML требует пустого конструктора
     }
     
-    /**
-     * Конструктор с внедрением зависимостей.
-     */
     public LocationPlanTabController(SaveLocationPlanUseCase saveLocationPlanUseCase,
                                     LoadLocationPlanUseCase loadLocationPlanUseCase,
                                     AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase,
@@ -73,24 +73,13 @@ public class LocationPlanTabController extends BaseTabController {
         setDependencies(saveLocationPlanUseCase, loadLocationPlanUseCase, addBuildingCoordinatesUseCase, deleteBuildingUseCase);
     }
     
-    /**
-     * Установить зависимости после создания (для FXML).
-     */
     public void setDependencies(SaveLocationPlanUseCase saveLocationPlanUseCase,
                                LoadLocationPlanUseCase loadLocationPlanUseCase,
                                AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase,
                                DeleteBuildingUseCase deleteBuildingUseCase) {
-        if (saveLocationPlanUseCase == null) {
-            throw new IllegalArgumentException("SaveLocationPlanUseCase не может быть null");
-        }
-        if (loadLocationPlanUseCase == null) {
-            throw new IllegalArgumentException("LoadLocationPlanUseCase не может быть null");
-        }
-        if (addBuildingCoordinatesUseCase == null) {
-            throw new IllegalArgumentException("AddBuildingCoordinatesUseCase не может быть null");
-        }
-        if (deleteBuildingUseCase == null) {
-            throw new IllegalArgumentException("DeleteBuildingUseCase не может быть null");
+        if (saveLocationPlanUseCase == null || loadLocationPlanUseCase == null || 
+            addBuildingCoordinatesUseCase == null || deleteBuildingUseCase == null) {
+            throw new IllegalArgumentException("Зависимости не могут быть null");
         }
         
         this.saveLocationPlanUseCase = saveLocationPlanUseCase;
@@ -106,7 +95,6 @@ public class LocationPlanTabController extends BaseTabController {
             scaleComboBox.setValue("500");
         }
         
-        // Настройка ListView с кастомными ячейками
         if (buildingsListView != null) {
             buildingsListView.setCellFactory(param -> new BuildingListCell());
         }
@@ -114,6 +102,88 @@ public class LocationPlanTabController extends BaseTabController {
         // Инициализация визуализатора
         if (buildingCanvas != null) {
             visualizer = new BuildingVisualizer(buildingCanvas);
+            setupCanvasInteraction();
+        }
+    }
+    
+    /**
+     * Настроить интерактивность Canvas (zoom/pan).
+     */
+    private void setupCanvasInteraction() {
+        // Zoom колесом мыши
+        buildingCanvas.setOnScroll((ScrollEvent event) -> {
+            if (visualizer != null) {
+                visualizer.getTransform().zoomByScroll(
+                    event.getX(), 
+                    event.getY(), 
+                    event.getDeltaY()
+                );
+                updateVisualization();
+                event.consume();
+            }
+        });
+        
+        // Pan (перемещение) средней кнопкой или Ctrl+левая кнопка
+        buildingCanvas.setOnMousePressed(event -> {
+            if (event.getButton() == MouseButton.MIDDLE || 
+                (event.getButton() == MouseButton.PRIMARY && event.isControlDown())) {
+                isPanning = true;
+                lastMouseX = event.getX();
+                lastMouseY = event.getY();
+                buildingCanvas.setCursor(javafx.scene.Cursor.CLOSED_HAND);
+                event.consume();
+            }
+        });
+        
+        buildingCanvas.setOnMouseDragged(event -> {
+            if (isPanning && visualizer != null) {
+                double dx = event.getX() - lastMouseX;
+                double dy = event.getY() - lastMouseY;
+                
+                visualizer.getTransform().pan(dx, dy);
+                updateVisualization();
+                
+                lastMouseX = event.getX();
+                lastMouseY = event.getY();
+                event.consume();
+            }
+        });
+        
+        buildingCanvas.setOnMouseReleased(event -> {
+            if (isPanning) {
+                isPanning = false;
+                buildingCanvas.setCursor(javafx.scene.Cursor.DEFAULT);
+                event.consume();
+            }
+        });
+    }
+    
+    @FXML
+    private void handleZoomIn() {
+        if (visualizer != null && buildingCanvas != null) {
+            // Zoom к центру canvas
+            double centerX = buildingCanvas.getWidth() / 2;
+            double centerY = buildingCanvas.getHeight() / 2;
+            visualizer.getTransform().zoomIn(centerX, centerY);
+            updateVisualization();
+        }
+    }
+    
+    @FXML
+    private void handleZoomOut() {
+        if (visualizer != null && buildingCanvas != null) {
+            double centerX = buildingCanvas.getWidth() / 2;
+            double centerY = buildingCanvas.getHeight() / 2;
+            visualizer.getTransform().zoomOut(centerX, centerY);
+            updateVisualization();
+        }
+    }
+    
+    @FXML
+    private void handleZoomReset() {
+        if (visualizer != null) {
+            visualizer.getTransform().reset();
+            updateVisualization();
         }
     }
     
@@ -160,10 +230,8 @@ public class LocationPlanTabController extends BaseTabController {
                     notesArea.setText(plan.notes());
                 }
                 
-                // Сохранить список зданий
                 currentBuildings = plan.buildings();
                 
-                // Обновить ListView
                 if (buildingsListView != null) {
                     buildingsListView.getItems().clear();
                     for (var building : currentBuildings) {
@@ -171,36 +239,24 @@ public class LocationPlanTabController extends BaseTabController {
                     }
                 }
                 
-                // Обновить визуализацию
                 updateVisualization();
-                
                 System.out.println("✓ Данные ситуационного плана загружены");
             } else {
-                System.out.println("ℹ️ Ситуационный план не найден, создается новый");
+                System.out.println("ℹ️ Ситуационный план не найден");
             }
-            
-        } catch (ValidationException e) {
-            showError("Ошибка валидации", e.getMessage());
         } catch (Exception e) {
-            showError("Ошибка загрузки", "Не удалось загрузить данные: " + e.getMessage());
+            showError("Ошибка загрузки", e.getMessage());
             e.printStackTrace();
         }
     }
     
-    /**
-     * Обновить визуализацию зданий.
-     */
     private void updateVisualization() {
-        if (visualizer == null) {
-            return;
-        }
+        if (visualizer == null) return;
         
-        // Скрыть/показать placeholder
         if (canvasPlaceholder != null) {
             canvasPlaceholder.setVisible(currentBuildings == null || currentBuildings.isEmpty());
         }
         
-        // Отрисовать здания
         visualizer.draw(currentBuildings);
     }
     
@@ -228,14 +284,7 @@ public class LocationPlanTabController extends BaseTabController {
     
     @Override
     public void saveData() {
-        if (saveLocationPlanUseCase == null) {
-            showWarning("Зависимости не установлены");
-            return;
-        }
-        
-        if (!validateData()) {
-            return;
-        }
+        if (saveLocationPlanUseCase == null || !validateData()) return;
         
         try {
             SaveLocationPlanCommand command = new SaveLocationPlanCommand(
@@ -248,13 +297,9 @@ public class LocationPlanTabController extends BaseTabController {
             );
             
             saveLocationPlanUseCase.execute(command);
-            
-            showInfo("Ситуационный план сохранен успешно");
-            
-        } catch (ValidationException e) {
-            showError("Ошибка валидации", e.getMessage());
+            showInfo("Ситуационный план сохранен");
         } catch (Exception e) {
-            showError("Ошибка сохранения", "Не удалось сохранить: " + e.getMessage());
+            showError("Ошибка", e.getMessage());
             e.printStackTrace();
         }
     }
@@ -276,21 +321,12 @@ public class LocationPlanTabController extends BaseTabController {
             showWarning("Сначала необходимо создать и сохранить паспорт");
             return;
         }
-        
-        if (addBuildingCoordinatesUseCase == null) {
-            showWarning("Зависимости не установлены");
-            return;
-        }
-        
         openBuildingDialog(null);
     }
     
     private void openBuildingDialog(LocationPlanDTO.BuildingCoordinatesDTO existingBuilding) {
         try {
-            FXMLLoader loader = new FXMLLoader(
-                getClass().getResource("/ui/dialogs/AddBuildingDialog.fxml")
-            );
-            
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/ui/dialogs/AddBuildingDialog.fxml"));
             Scene dialogScene = new Scene(loader.load());
             AddBuildingDialogController controller = loader.getController();
             
@@ -302,7 +338,6 @@ public class LocationPlanTabController extends BaseTabController {
             
             controller.setDialogStage(dialogStage);
             
-            // Заполнить данными при редактировании
             if (existingBuilding != null) {
                 List<AddBuildingDialogController.Point> points = new ArrayList<>();
                 for (var point : existingBuilding.points()) {
@@ -318,18 +353,14 @@ public class LocationPlanTabController extends BaseTabController {
             
             if (controller.isSavedSuccessfully()) {
                 AddBuildingDialogController.BuildingData buildingData = controller.getBuildingData();
-                
                 if (buildingData != null) {
                     if (controller.isEditMode()) {
-                        // Редактирование: удалить старое и добавить новое
                         updateBuildingInDatabase(buildingData);
                     } else {
-                        // Добавление нового
                         saveBuildingToDatabase(buildingData);
                     }
                 }
             }
-            
         } catch (IOException e) {
             showError("Ошибка загрузки диалога", e.getMessage());
             e.printStackTrace();
@@ -341,65 +372,44 @@ public class LocationPlanTabController extends BaseTabController {
             List<AddBuildingCoordinatesCommand.CoordinatePointData> pointDatas = new ArrayList<>();
             for (AddBuildingDialogController.Point point : buildingData.getPoints()) {
                 pointDatas.add(new AddBuildingCoordinatesCommand.CoordinatePointData(
-                    String.valueOf(point.getX()),
-                    String.valueOf(point.getY())
+                    String.valueOf(point.getX()), String.valueOf(point.getY())
                 ));
             }
             
             AddBuildingCoordinatesCommand command = new AddBuildingCoordinatesCommand(
-                currentPassportId,
-                buildingData.getLitera(),
-                buildingData.getDescription(),
-                pointDatas
+                currentPassportId, buildingData.getLitera(), buildingData.getDescription(), pointDatas
             );
             
             addBuildingCoordinatesUseCase.execute(command);
             loadLocationPlanData();
-            
             showInfo("Здание успешно добавлено!");
-            
-        } catch (ValidationException e) {
-            showError("Ошибка валидации", e.getMessage());
         } catch (Exception e) {
-            showError("Ошибка сохранения", "Не удалось сохранить здание: " + e.getMessage());
+            showError("Ошибка", e.getMessage());
             e.printStackTrace();
         }
     }
     
     private void updateBuildingInDatabase(AddBuildingDialogController.BuildingData buildingData) {
         try {
-            // Стратегия: удалить старое + добавить новое
-            DeleteBuildingCommand deleteCommand = new DeleteBuildingCommand(
-                currentPassportId,
-                buildingData.getLitera()
-            );
+            DeleteBuildingCommand deleteCommand = new DeleteBuildingCommand(currentPassportId, buildingData.getLitera());
             deleteBuildingUseCase.execute(deleteCommand);
             
-            // Добавить обновленное здание
             List<AddBuildingCoordinatesCommand.CoordinatePointData> pointDatas = new ArrayList<>();
             for (AddBuildingDialogController.Point point : buildingData.getPoints()) {
                 pointDatas.add(new AddBuildingCoordinatesCommand.CoordinatePointData(
-                    String.valueOf(point.getX()),
-                    String.valueOf(point.getY())
+                    String.valueOf(point.getX()), String.valueOf(point.getY())
                 ));
             }
             
             AddBuildingCoordinatesCommand addCommand = new AddBuildingCoordinatesCommand(
-                currentPassportId,
-                buildingData.getLitera(),
-                buildingData.getDescription(),
-                pointDatas
+                currentPassportId, buildingData.getLitera(), buildingData.getDescription(), pointDatas
             );
             
             addBuildingCoordinatesUseCase.execute(addCommand);
             loadLocationPlanData();
-            
             showInfo("Здание успешно обновлено!");
-            
-        } catch (ValidationException e) {
-            showError("Ошибка валидации", e.getMessage());
         } catch (Exception e) {
-            showError("Ошибка обновления", "Не удалось обновить здание: " + e.getMessage());
+            showError("Ошибка", e.getMessage());
             e.printStackTrace();
         }
     }
@@ -413,20 +423,12 @@ public class LocationPlanTabController extends BaseTabController {
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 try {
-                    DeleteBuildingCommand command = new DeleteBuildingCommand(
-                        currentPassportId,
-                        item.getBuilding().litera()
-                    );
-                    
+                    DeleteBuildingCommand command = new DeleteBuildingCommand(currentPassportId, item.getBuilding().litera());
                     deleteBuildingUseCase.execute(command);
                     loadLocationPlanData();
-                    
                     showInfo("Здание успешно удалено!");
-                    
-                } catch (ValidationException e) {
-                    showError("Ошибка валидации", e.getMessage());
                 } catch (Exception e) {
-                    showError("Ошибка удаления", "Не удалось удалить здание: " + e.getMessage());
+                    showError("Ошибка", e.getMessage());
                     e.printStackTrace();
                 }
             }
@@ -457,9 +459,7 @@ public class LocationPlanTabController extends BaseTabController {
     }
     
     @FXML
-    private void handleSave() {
-        saveData();
-    }
+    private void handleSave() { saveData(); }
     
     @FXML
     private void handleClear() {
@@ -467,12 +467,7 @@ public class LocationPlanTabController extends BaseTabController {
         alert.setTitle("Подтверждение");
         alert.setHeaderText("Очистка данных");
         alert.setContentText("Вы уверены, что хотите очистить все данные?");
-        
-        alert.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
-                clearData();
-            }
-        });
+        alert.showAndWait().ifPresent(response -> { if (response == ButtonType.OK) clearData(); });
     }
     
     private void showError(String title, String message) {
@@ -499,63 +494,40 @@ public class LocationPlanTabController extends BaseTabController {
         alert.showAndWait();
     }
     
-    // === Inner Classes ===
-    
-    /**
-     * Обертка для здания в ListView.
-     */
     private static class BuildingItem {
         private final LocationPlanDTO.BuildingCoordinatesDTO building;
-        
-        public BuildingItem(LocationPlanDTO.BuildingCoordinatesDTO building) {
-            this.building = building;
-        }
-        
-        public LocationPlanDTO.BuildingCoordinatesDTO getBuilding() {
-            return building;
-        }
+        public BuildingItem(LocationPlanDTO.BuildingCoordinatesDTO building) { this.building = building; }
+        public LocationPlanDTO.BuildingCoordinatesDTO getBuilding() { return building; }
     }
     
-    /**
-     * Кастомная ячейка ListView с кнопками управления.
-     */
     private class BuildingListCell extends ListCell<BuildingItem> {
         private final HBox content;
         private final Label textLabel;
-        private final Button viewButton;
-        private final Button editButton;
-        private final Button deleteButton;
+        private final Button viewButton, editButton, deleteButton;
         
         public BuildingListCell() {
             content = new HBox(10);
             content.setAlignment(Pos.CENTER_LEFT);
-            
             textLabel = new Label();
             textLabel.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(textLabel, Priority.ALWAYS);
-            
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
-            
             viewButton = new Button("👁️");
             viewButton.setTooltip(new Tooltip("Просмотреть"));
             viewButton.setStyle("-fx-font-size: 14px; -fx-padding: 5 10;");
-            
             editButton = new Button("✏️");
             editButton.setTooltip(new Tooltip("Редактировать"));
             editButton.setStyle("-fx-font-size: 14px; -fx-padding: 5 10;");
-            
             deleteButton = new Button("🗑️");
             deleteButton.setTooltip(new Tooltip("Удалить"));
             deleteButton.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 5 10;");
-            
             content.getChildren().addAll(textLabel, spacer, viewButton, editButton, deleteButton);
         }
         
         @Override
         protected void updateItem(BuildingItem item, boolean empty) {
             super.updateItem(item, empty);
-            
             if (empty || item == null) {
                 setText(null);
                 setGraphic(null);
@@ -563,11 +535,9 @@ public class LocationPlanTabController extends BaseTabController {
                 var building = item.getBuilding();
                 textLabel.setText(String.format("🏗️ Литера %s: %s (%d точек)", 
                     building.litera(), building.description(), building.points().size()));
-                
                 viewButton.setOnAction(e -> handleViewBuilding(item));
                 editButton.setOnAction(e -> handleEditBuilding(item));
                 deleteButton.setOnAction(e -> handleDeleteBuilding(item));
-                
                 setGraphic(content);
             }
         }
