@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Контроллер вкладки "Ситуационный план" с поддержкой zoom/pan.
+ * Контроллер вкладки "Ситуационный план" с поддержкой zoom/pan и выделения.
  */
 public class LocationPlanTabController extends BaseTabController {
     
@@ -52,6 +52,9 @@ public class LocationPlanTabController extends BaseTabController {
     @FXML private Button zoomInButton;
     @FXML private Button zoomOutButton;
     @FXML private Button zoomResetButton;
+    
+    // Информационная панель о выбранном здании
+    @FXML private Label selectedBuildingLabel;
     
     private String currentPassportId;
     private List<LocationPlanDTO.BuildingCoordinatesDTO> currentBuildings = new ArrayList<>();
@@ -107,7 +110,7 @@ public class LocationPlanTabController extends BaseTabController {
     }
     
     /**
-     * Настроить интерактивность Canvas (zoom/pan).
+     * Настроить интерактивность Canvas (zoom/pan/selection).
      */
     private void setupCanvasInteraction() {
         // Zoom колесом мыши
@@ -118,6 +121,48 @@ public class LocationPlanTabController extends BaseTabController {
                     event.getY(), 
                     event.getDeltaY()
                 );
+                updateVisualization();
+                event.consume();
+            }
+        });
+        
+        // Hover - подсветка при наведении
+        buildingCanvas.setOnMouseMoved(event -> {
+            if (visualizer != null && !isPanning) {
+                String hoveredLitera = visualizer.findBuildingAt(event.getX(), event.getY(), currentBuildings);
+                visualizer.setHoveredBuilding(hoveredLitera);
+                
+                // Изменить курсор
+                if (hoveredLitera != null) {
+                    buildingCanvas.setCursor(javafx.scene.Cursor.HAND);
+                } else {
+                    buildingCanvas.setCursor(javafx.scene.Cursor.DEFAULT);
+                }
+                
+                updateVisualization();
+            }
+        });
+        
+        // Клик - выделение здания
+        buildingCanvas.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && !event.isControlDown() && visualizer != null) {
+                String clickedLitera = visualizer.findBuildingAt(event.getX(), event.getY(), currentBuildings);
+                
+                if (clickedLitera != null) {
+                    // Если кликнули по уже выделенному - снять выделение
+                    if (clickedLitera.equals(visualizer.getSelectedBuilding())) {
+                        visualizer.clearSelection();
+                        updateSelectionInfo(null);
+                    } else {
+                        visualizer.setSelectedBuilding(clickedLitera);
+                        updateSelectionInfo(clickedLitera);
+                    }
+                } else {
+                    // Клик по пустому месту - снять выделение
+                    visualizer.clearSelection();
+                    updateSelectionInfo(null);
+                }
+                
                 updateVisualization();
                 event.consume();
             }
@@ -156,12 +201,47 @@ public class LocationPlanTabController extends BaseTabController {
                 event.consume();
             }
         });
+        
+        // Очистить hover при выходе из canvas
+        buildingCanvas.setOnMouseExited(event -> {
+            if (visualizer != null) {
+                visualizer.setHoveredBuilding(null);
+                buildingCanvas.setCursor(javafx.scene.Cursor.DEFAULT);
+                updateVisualization();
+            }
+        });
+    }
+    
+    /**
+     * Обновить информацию о выбранном здании.
+     */
+    private void updateSelectionInfo(String litera) {
+        if (selectedBuildingLabel == null) {
+            return;
+        }
+        
+        if (litera == null) {
+            selectedBuildingLabel.setText("Кликните по зданию для выбора");
+            selectedBuildingLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #999;");
+        } else {
+            // Найти здание по литере
+            LocationPlanDTO.BuildingCoordinatesDTO building = currentBuildings.stream()
+                .filter(b -> b.litera().equals(litera))
+                .findFirst()
+                .orElse(null);
+            
+            if (building != null) {
+                String info = String.format("✅ Выбрано: Литера %s - %s (%d точек)", 
+                    building.litera(), building.description(), building.points().size());
+                selectedBuildingLabel.setText(info);
+                selectedBuildingLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #4CAF50; -fx-font-weight: bold;");
+            }
+        }
     }
     
     @FXML
     private void handleZoomIn() {
         if (visualizer != null && buildingCanvas != null) {
-            // Zoom к центру canvas
             double centerX = buildingCanvas.getWidth() / 2;
             double centerY = buildingCanvas.getHeight() / 2;
             visualizer.getTransform().zoomIn(centerX, centerY);
@@ -312,6 +392,8 @@ public class LocationPlanTabController extends BaseTabController {
         if (notesArea != null) notesArea.clear();
         if (buildingsListView != null) buildingsListView.getItems().clear();
         currentBuildings.clear();
+        if (visualizer != null) visualizer.clearSelection();
+        updateSelectionInfo(null);
         updateVisualization();
     }
     
