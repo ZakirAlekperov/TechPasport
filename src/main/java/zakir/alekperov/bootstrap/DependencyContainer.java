@@ -99,6 +99,13 @@ public final class DependencyContainer {
         System.out.println("Приложение завершено");
     }
     
+    /**
+     * Алиас для shutdown() для совместимости с try-with-resources.
+     */
+    public void close() {
+        shutdown();
+    }
+    
     // Геттеры для получения зависимостей
     
     public ApplicationConfiguration getConfiguration() {
