@@ -60,7 +60,8 @@ public class ApplicationLauncher extends Application {
                     controller.setDependencies(
                         dependencyContainer.getSaveLocationPlanUseCase(),
                         dependencyContainer.getLoadLocationPlanUseCase(),
-                        dependencyContainer.getAddBuildingCoordinatesUseCase()
+                        dependencyContainer.getAddBuildingCoordinatesUseCase(),
+                        dependencyContainer.getDeleteBuildingUseCase()
                     );
                     
                     // Регистрируем контроллер в DI контейнере
