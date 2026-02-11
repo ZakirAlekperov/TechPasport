@@ -4,6 +4,7 @@ import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import javafx.util.Callback;
 import zakir.alekperov.ui.MainWindowController;
 
 /**
@@ -44,6 +45,27 @@ public class ApplicationLauncher extends Application {
         
         // Установить контроллер вручную (без вызова конструктора FXML)
         loader.setController(mainController);
+        
+        // Установить фабрику контроллеров для вложенных FXML
+        loader.setControllerFactory(new Callback<Class<?>, Object>() {
+            @Override
+            public Object call(Class<?> controllerClass) {
+                System.out.println("🏭 FXMLControllerFactory: запрошен контроллер " + controllerClass.getSimpleName());
+                
+                // Возвращаем контроллеры из DI контейнера
+                if (controllerClass.getSimpleName().equals("LocationPlanTabController")) {
+                    return dependencyContainer.getLocationPlanTabController();
+                }
+                
+                // Для остальных контроллеров пытаемся создать через пустой конструктор
+                try {
+                    System.out.println("⚠️ Контроллер " + controllerClass.getSimpleName() + " не зарегистрирован в DI, используется стандартное создание");
+                    return controllerClass.getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new RuntimeException("Не удалось создать контроллер: " + controllerClass.getName(), e);
+                }
+            }
+        });
         
         Scene scene = new Scene(loader.load(), 1200, 800);
         
