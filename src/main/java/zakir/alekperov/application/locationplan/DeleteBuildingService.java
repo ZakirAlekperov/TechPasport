@@ -35,7 +35,7 @@ public class DeleteBuildingService implements DeleteBuildingUseCase {
         }
         
         // Загрузка плана
-        PassportId passportId = new PassportId(command.getPassportId());
+        PassportId passportId = PassportId.fromString(command.getPassportId());
         Optional<LocationPlan> planOptional = locationPlanRepository.findByPassportId(passportId);
         
         if (planOptional.isEmpty()) {
