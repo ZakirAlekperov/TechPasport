@@ -12,6 +12,7 @@ import zakir.alekperov.ui.tabs.base.BaseTabController;
 import java.time.Year;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 public class CommonInfoTabController extends BaseTabController {
     
@@ -44,6 +45,34 @@ public class CommonInfoTabController extends BaseTabController {
     
     private DaDataService daDataService;
     private AddressSuggestion validatedAddress;
+    
+    // Listener для уведомления об изменении региона
+    private Consumer<String> regionChangeListener;
+    
+    /**
+     * НОВЫЙ МЕТОД: Установить listener для отслеживания изменений региона.
+     * Вызывается из главного контроллера для интеграции с LocationPlanTabController.
+     */
+    public void setRegionChangeListener(Consumer<String> listener) {
+        this.regionChangeListener = listener;
+    }
+    
+    /**
+     * НОВЫЙ МЕТОД: Получить TextField региона для прямого доступа.
+     */
+    public TextField getRegionField() {
+        return regionField;
+    }
+    
+    /**
+     * НОВЫЙ МЕТОД: Получить текущий регион (из проверенного адреса или из поля).
+     */
+    public String getCurrentRegion() {
+        if (validatedAddress != null && validatedAddress.getRegion() != null) {
+            return validatedAddress.getRegion();
+        }
+        return regionField != null ? regionField.getText() : null;
+    }
     
     @Override
     protected void setupBindings() {
@@ -117,13 +146,26 @@ public class CommonInfoTabController extends BaseTabController {
     }
     
     private void setupAddressChangeListeners() {
-        regionField.textProperty().addListener((obs, old, val) -> hideValidatedAddress());
+        regionField.textProperty().addListener((obs, old, val) -> {
+            hideValidatedAddress();
+            notifyRegionChanged(val);
+        });
         districtField.textProperty().addListener((obs, old, val) -> hideValidatedAddress());
         cityField.textProperty().addListener((obs, old, val) -> hideValidatedAddress());
         cityDistrictField.textProperty().addListener((obs, old, val) -> hideValidatedAddress());
         streetField.textProperty().addListener((obs, old, val) -> hideValidatedAddress());
         houseField.textProperty().addListener((obs, old, val) -> hideValidatedAddress());
         buildingField.textProperty().addListener((obs, old, val) -> hideValidatedAddress());
+    }
+    
+    /**
+     * НОВЫЙ МЕТОД: Уведомить listener об изменении региона.
+     */
+    private void notifyRegionChanged(String newRegion) {
+        if (regionChangeListener != null && newRegion != null && !newRegion.isBlank()) {
+            regionChangeListener.accept(newRegion);
+            System.out.println("🌍 Регион изменен: " + newRegion);
+        }
     }
     
     private void hideValidatedAddress() {
@@ -288,6 +330,10 @@ public class CommonInfoTabController extends BaseTabController {
         if (exactMatch != null) {
             validatedAddress = exactMatch;
             showValidatedAddress(exactMatch);
+            // Уведомляем об изменении региона из проверенного адреса
+            if (exactMatch.getRegion() != null) {
+                notifyRegionChanged(exactMatch.getRegion());
+            }
             return true;
         }
         
@@ -299,6 +345,10 @@ public class CommonInfoTabController extends BaseTabController {
             validatedAddress = result.get();
             fillFieldsFromSuggestion(validatedAddress);
             showValidatedAddress(validatedAddress);
+            // Уведомляем об изменении региона из проверенного адреса
+            if (validatedAddress.getRegion() != null) {
+                notifyRegionChanged(validatedAddress.getRegion());
+            }
             return true;
         }
         
