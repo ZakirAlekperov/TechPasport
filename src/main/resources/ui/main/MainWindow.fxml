@@ -42,7 +42,7 @@
             </Tab>
             
             <Tab text="4. Ситуационный план" closable="false">
-                <fx:include source="/ui/tabs/LocationPlanTab.fxml"/>
+                <fx:include source="/ui/tabs/location-plan/LocationPlanTab.fxml"/>
             </Tab>
             
             <Tab text="5. Благоустройство" closable="false" disable="true"/>
