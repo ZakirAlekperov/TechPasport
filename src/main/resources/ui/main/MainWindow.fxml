@@ -38,12 +38,13 @@
             </Tab>
             
             <Tab text="3. Правообладатели" closable="false">
-    <fx:include source="/ui/tabs/owners/OwnersTab.fxml"/>
-</Tab>
-
+                <fx:include source="/ui/tabs/owners/OwnersTab.fxml"/>
+            </Tab>
             
-
-            <Tab text="4. Ситуационный план" closable="false" disable="true"/>
+            <Tab text="4. Ситуационный план" closable="false">
+                <fx:include source="/ui/tabs/locationplan/LocationPlanTab.fxml"/>
+            </Tab>
+            
             <Tab text="5. Благоустройство" closable="false" disable="true"/>
             <Tab text="6. Поэтажный план" closable="false" disable="true"/>
             <Tab text="7. Экспликация" closable="false" disable="true"/>
