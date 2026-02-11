@@ -85,25 +85,38 @@
                        style="-fx-text-fill: #999; -fx-font-size: 14px;"/>
             </StackPane>
 
-            <!-- Легенда и подсказки -->
-            <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 5;">
-                <Label text="Легенда:" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
-                <HBox spacing="5" alignment="CENTER_LEFT">
-                    <Label text="●" style="-fx-text-fill: #2196F3; -fx-font-size: 16px;"/>
-                    <Label text="Здания" style="-fx-font-size: 11px;"/>
-                </HBox>
-                <HBox spacing="5" alignment="CENTER_LEFT">
-                    <Label text="●" style="-fx-text-fill: #FF5722; -fx-font-size: 16px;"/>
-                    <Label text="Точки контура" style="-fx-font-size: 11px;"/>
+            <!-- Легенда и информация о выбранном здании -->
+            <VBox spacing="5">
+                <!-- Информация о выбранном здании -->
+                <HBox style="-fx-background-color: #e8f5e9; -fx-padding: 8; -fx-border-radius: 4; -fx-background-radius: 4;">
+                    <Label fx:id="selectedBuildingLabel" text="Кликните по зданию для выбора" 
+                           style="-fx-font-size: 11px; -fx-text-fill: #999;" wrapText="true" HBox.hgrow="ALWAYS"/>
                 </HBox>
                 
-                <!-- Прокладка -->
-                <Region HBox.hgrow="ALWAYS"/>
-                
-                <!-- Подсказка об управлении -->
-                <Label text="🖌️ Ctrl+левая кнопка - перемещение | 🔍 Колесо - zoom" 
-                       style="-fx-font-size: 10px; -fx-text-fill: #666;"/>
-            </HBox>
+                <!-- Легенда и подсказки -->
+                <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 5;">
+                    <Label text="Легенда:" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
+                    <HBox spacing="5" alignment="CENTER_LEFT">
+                        <Label text="●" style="-fx-text-fill: #2196F3; -fx-font-size: 16px;"/>
+                        <Label text="Обычное" style="-fx-font-size: 10px;"/>
+                    </HBox>
+                    <HBox spacing="5" alignment="CENTER_LEFT">
+                        <Label text="●" style="-fx-text-fill: #FF9800; -fx-font-size: 16px;"/>
+                        <Label text="Hover" style="-fx-font-size: 10px;"/>
+                    </HBox>
+                    <HBox spacing="5" alignment="CENTER_LEFT">
+                        <Label text="●" style="-fx-text-fill: #4CAF50; -fx-font-size: 16px;"/>
+                        <Label text="Выбрано" style="-fx-font-size: 10px;"/>
+                    </HBox>
+                    
+                    <!-- Прокладка -->
+                    <Region HBox.hgrow="ALWAYS"/>
+                    
+                    <!-- Подсказка об управлении -->
+                    <Label text="🖌️ Ctrl+ЛКМ - перемещение | 🔍 Колесо - zoom | 🖌️ Клик - выбор" 
+                           style="-fx-font-size: 9px; -fx-text-fill: #666;"/>
+                </HBox>
+            </VBox>
         </VBox>
 
         <!-- Правая панель: список зданий -->
