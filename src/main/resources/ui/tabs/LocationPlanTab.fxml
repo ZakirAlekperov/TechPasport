@@ -51,7 +51,31 @@
         <!-- Центральная панель: визуализация -->
         <VBox spacing="10" HBox.hgrow="ALWAYS" 
               style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #ddd; -fx-border-radius: 5; -fx-background-radius: 5;">
-            <Label text="🗺️ Визуализация зданий" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+            
+            <!-- Заголовок с кнопками управления -->
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="🗺️ Визуализация зданий" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+                
+                <!-- Прокладка -->
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <!-- Кнопки масштабирования -->
+                <HBox spacing="5" style="-fx-border-color: #ddd; -fx-border-width: 1; -fx-border-radius: 3; -fx-background-radius: 3; -fx-padding: 2;">
+                    <Button fx:id="zoomInButton" text="➕" onAction="#handleZoomIn"
+                            style="-fx-font-size: 12px; -fx-padding: 5 10; -fx-background-color: #2196F3; -fx-text-fill: white;">
+                        <tooltip><Tooltip text="Увеличить масштаб"/></tooltip>
+                    </Button>
+                    <Button fx:id="zoomOutButton" text="➖" onAction="#handleZoomOut"
+                            style="-fx-font-size: 12px; -fx-padding: 5 10; -fx-background-color: #2196F3; -fx-text-fill: white;">
+                        <tooltip><Tooltip text="Уменьшить масштаб"/></tooltip>
+                    </Button>
+                    <Button fx:id="zoomResetButton" text="🎯" onAction="#handleZoomReset"
+                            style="-fx-font-size: 12px; -fx-padding: 5 10; -fx-background-color: #607D8B; -fx-text-fill: white;">
+                        <tooltip><Tooltip text="Сбросить масштаб"/></tooltip>
+                    </Button>
+                </HBox>
+            </HBox>
+            
             <Separator/>
 
             <!-- Canvas для отрисовки -->
@@ -61,7 +85,7 @@
                        style="-fx-text-fill: #999; -fx-font-size: 14px;"/>
             </StackPane>
 
-            <!-- Легенда -->
+            <!-- Легенда и подсказки -->
             <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 5;">
                 <Label text="Легенда:" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
                 <HBox spacing="5" alignment="CENTER_LEFT">
@@ -72,6 +96,13 @@
                     <Label text="●" style="-fx-text-fill: #FF5722; -fx-font-size: 16px;"/>
                     <Label text="Точки контура" style="-fx-font-size: 11px;"/>
                 </HBox>
+                
+                <!-- Прокладка -->
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <!-- Подсказка об управлении -->
+                <Label text="🖌️ Ctrl+левая кнопка - перемещение | 🔍 Колесо - zoom" 
+                       style="-fx-font-size: 10px; -fx-text-fill: #666;"/>
             </HBox>
         </VBox>
 
