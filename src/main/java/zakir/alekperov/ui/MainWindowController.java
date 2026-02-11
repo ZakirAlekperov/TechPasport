@@ -2,27 +2,117 @@ package zakir.alekperov.ui;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import zakir.alekperov.bootstrap.DependencyContainer;
+import zakir.alekperov.ui.tabs.base.BaseTabController;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * Контроллер главного окна приложения
+ * Контроллер главного окна приложения.
+ * Управляет вкладками и интегрирует их с DependencyContainer.
  */
 public class MainWindowController {
+    
+    private final DependencyContainer dependencyContainer;
+    private final Map<Tab, BaseTabController> tabControllers = new HashMap<>();
+    private String currentPassportId;
     
     @FXML
     private TabPane tabPane;
     
+    /**
+     * Конструктор с внедрением зависимостей.
+     */
+    public MainWindowController(DependencyContainer dependencyContainer) {
+        if (dependencyContainer == null) {
+            throw new IllegalArgumentException("DependencyContainer не может быть null");
+        }
+        this.dependencyContainer = dependencyContainer;
+    }
+    
     @FXML
     private void initialize() {
-        // Инициализация при загрузке
+        System.out.println("✓ MainWindowController инициализирован");
+        
+        // Регистрация контроллеров вкладок
+        if (tabPane != null && !tabPane.getTabs().isEmpty()) {
+            for (Tab tab : tabPane.getTabs()) {
+                Object controller = tab.getUserData();
+                if (controller instanceof BaseTabController) {
+                    tabControllers.put(tab, (BaseTabController) controller);
+                    System.out.println("  → Зарегистрирована вкладка: " + tab.getText());
+                }
+            }
+        }
+        
+        // Установить тестовый паспорт для демонстрации
+        loadTestPassport();
     }
+    
+    /**
+     * Загрузить тестовый паспорт для демонстрации.
+     */
+    private void loadTestPassport() {
+        // Используем тестовый ID, созданный TestDataCreator
+        currentPassportId = "test-passport-001";
+        System.out.println("✓ Загружен тестовый паспорт: " + currentPassportId);
+        
+        // Уведомить все контроллеры о новом паспорте
+        notifyControllersAboutPassportChange();
+    }
+    
+    /**
+     * Установить текущий ID паспорта.
+     */
+    public void setCurrentPassportId(String passportId) {
+        if (passportId == null || passportId.isBlank()) {
+            throw new IllegalArgumentException("ID паспорта не может быть пустым");
+        }
+        this.currentPassportId = passportId;
+        notifyControllersAboutPassportChange();
+    }
+    
+    /**
+     * Уведомить все контроллеры вкладок о смене паспорта.
+     */
+    private void notifyControllersAboutPassportChange() {
+        if (currentPassportId == null) {
+            return;
+        }
+        
+        for (BaseTabController controller : tabControllers.values()) {
+            try {
+                // Если контроллер поддерживает setPassportId
+                var method = controller.getClass().getMethod("setPassportId", String.class);
+                method.invoke(controller, currentPassportId);
+                System.out.println("  → Паспорт установлен для: " + controller.getClass().getSimpleName());
+            } catch (NoSuchMethodException e) {
+                // Контроллер не поддерживает setPassportId - это нормально
+            } catch (Exception e) {
+                System.err.println("Ошибка установки паспорта для контроллера: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    /**
+     * Получить контроллер DI.
+     */
+    public DependencyContainer getDependencyContainer() {
+        return dependencyContainer;
+    }
+    
+    // === Обработчики меню ===
     
     @FXML
     private void handleNewPassport() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Новый паспорт");
         alert.setHeaderText("Создание нового технического паспорта");
-        alert.setContentText("Функция в разработке");
+        alert.setContentText("Функция в разработке.\n\nВы можете использовать текущий тестовый паспорт:\nID: " + currentPassportId);
         alert.showAndWait();
     }
     
@@ -31,17 +121,29 @@ public class MainWindowController {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Открыть");
         alert.setHeaderText("Открытие существующего паспорта");
-        alert.setContentText("Функция в разработке");
+        alert.setContentText("Функция в разработке.\n\nТекущий паспорт: " + currentPassportId);
         alert.showAndWait();
     }
     
     @FXML
     private void handleSavePassport() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Сохранить");
-        alert.setHeaderText("Сохранение технического паспорта");
-        alert.setContentText("Функция в разработке");
-        alert.showAndWait();
+        if (currentPassportId == null) {
+            showWarning("Паспорт не выбран", "Сначала создайте или откройте паспорт");
+            return;
+        }
+        
+        // Сохранить данные из всех вкладок
+        int savedCount = 0;
+        for (Map.Entry<Tab, BaseTabController> entry : tabControllers.entrySet()) {
+            try {
+                entry.getValue().saveData();
+                savedCount++;
+            } catch (Exception e) {
+                System.err.println("Ошибка сохранения вкладки " + entry.getKey().getText() + ": " + e.getMessage());
+            }
+        }
+        
+        showInfo("Сохранение завершено", "Данные сохранены из " + savedCount + " вкладок");
     }
     
     @FXML
@@ -73,40 +175,73 @@ public class MainWindowController {
     
     @FXML
     private void handleExit() {
+        // Закрыть соединение с БД перед выходом
+        try {
+            dependencyContainer.close();
+            System.out.println("✓ Соединение с БД закрыто");
+        } catch (Exception e) {
+            System.err.println("Ошибка закрытия БД: " + e.getMessage());
+        }
         System.exit(0);
     }
     
     @FXML
-private void handleAbout() {
-    Alert alert = new Alert(Alert.AlertType.INFORMATION);
-    alert.setTitle("О программе");
-    alert.setHeaderText("📋 Система создания технических паспортов");
+    private void handleAbout() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("О программе");
+        alert.setHeaderText("📋 Система создания технических паспортов");
+        
+        String content = 
+            "Версия: 1.0-SNAPSHOT\n" +
+            "Дата: 11 февраля 2026 г.\n\n" +
+            
+            "Программа для автоматизированного создания\n" +
+            "технических паспортов объектов индивидуального\n" +
+            "жилищного строительства.\n\n" +
+            
+            "📜 Соответствует официальной форме\n" +
+            "Приказ Минэкономразвития РФ от 17.08.2006 № 244\n\n" +
+            
+            "✨ Возможности:\n" +
+            "  • Проверка адреса через базу ФИАС (DaData API)\n" +
+            "  • Управление составом объекта\n" +
+            "  • Ситуационный план с координатами зданий\n" +
+            "  • Автоматический расчет параметров\n" +
+            "  • Экспорт в PDF (в разработке)\n\n" +
+            
+            "🏗️ Архитектура:\n" +
+            "  • Clean Architecture (Domain-Driven Design)\n" +
+            "  • Строгое разделение слоёв\n" +
+            "  • Ручное управление зависимостями\n\n" +
+            
+            "💾 База данных: SQLite\n" +
+            "📂 Расположение: ~/.techpasport/\n\n" +
+            
+            "───────────────────────────────\n\n" +
+            
+            "👨‍💻 Автор: Закир Алекперов\n" +
+            "© 2026 Все права защищены";
+        
+        alert.setContentText(content);
+        alert.getDialogPane().setPrefWidth(550);
+        alert.showAndWait();
+    }
     
-    String content = 
-        "Версия: 1.0-SNAPSHOT\n" +
-        "Дата: 11 февраля 2026 г.\n\n" +
-        
-        "Программа для автоматизированного создания\n" +
-        "технических паспортов объектов индивидуального\n" +
-        "жилищного строительства.\n\n" +
-        
-        "📜 Соответствует официальной форме\n" +
-        "Приказ Минэкономразвития РФ от 17.08.2006 № 244\n\n" +
-        
-        "✨ Возможности:\n" +
-        "  • Проверка адреса через базу ФИАС (DaData API)\n" +
-        "  • Управление составом объекта\n" +
-        "  • Автоматический расчет параметров\n" +
-        "  • Экспорт в PDF (в разработке)\n\n" +
-        
-        "───────────────────────────────\n\n" +
-        
-        "👨‍💻 Автор: Закир Алекперов\n" +
-        "© 2026 Все права защищены";
+    // === Вспомогательные методы ===
     
-    alert.setContentText(content);
-    alert.getDialogPane().setPrefWidth(500);
-    alert.showAndWait();
-}
-
+    private void showInfo(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+    
+    private void showWarning(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
 }
