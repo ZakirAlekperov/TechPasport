@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Контроллер диалога добавления здания.
+ * Контроллер диалога добавления/редактирования здания.
  * Позволяет ввести литеру, описание и координаты точек.
  */
 public class AddBuildingDialogController {
@@ -34,6 +34,7 @@ public class AddBuildingDialogController {
     private ObservableList<CoordinatePoint> points = FXCollections.observableArrayList();
     private boolean savedSuccessfully = false;
     private Stage dialogStage;
+    private boolean isEditMode = false;
     
     /**
      * Результат диалога - данные нового здания.
@@ -102,10 +103,13 @@ public class AddBuildingDialogController {
         setupTable();
         updatePointCount();
         
-        // Добавить 3 пустые точки по умолчанию
-        addPoint();
-        addPoint();
-        addPoint();
+        // Добавить 3 пустые точки по умолчанию (только для нового здания)
+        // Если редактирование, точки будут загружены через setExistingBuilding()
+        if (!isEditMode) {
+            addPoint();
+            addPoint();
+            addPoint();
+        }
     }
     
     private void setupTable() {
@@ -153,6 +157,31 @@ public class AddBuildingDialogController {
         });
         
         coordinatesTable.setItems(points);
+    }
+    
+    /**
+     * Установить существующие данные здания для редактирования.
+     */
+    public void setExistingBuilding(String litera, String description, List<Point> existingPoints) {
+        isEditMode = true;
+        
+        if (literaField != null) {
+            literaField.setText(litera);
+            literaField.setDisable(true); // Литеру нельзя изменить при редактировании
+        }
+        
+        if (descriptionField != null) {
+            descriptionField.setText(description);
+        }
+        
+        // Очистить текущие точки и загрузить существующие
+        points.clear();
+        int pointNum = 1;
+        for (Point p : existingPoints) {
+            points.add(new CoordinatePoint(pointNum++, p.getX(), p.getY()));
+        }
+        
+        updatePointCount();
     }
     
     @FXML
@@ -255,6 +284,10 @@ public class AddBuildingDialogController {
     
     public boolean isSavedSuccessfully() {
         return savedSuccessfully;
+    }
+    
+    public boolean isEditMode() {
+        return isEditMode;
     }
     
     /**
