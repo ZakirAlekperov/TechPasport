@@ -89,7 +89,7 @@
             <VBox spacing="5">
                 <!-- Информация о выбранном здании -->
                 <HBox style="-fx-background-color: #e8f5e9; -fx-padding: 8; -fx-border-radius: 4; -fx-background-radius: 4;">
-                    <Label fx:id="selectedBuildingLabel" text="Кликните по зданию для выбора" 
+                    <Label fx:id="selectedBuildingLabel" text="Кликните по зданию для выбора. Alt+ЛКМ на точке - редактирование." 
                            style="-fx-font-size: 11px; -fx-text-fill: #999;" wrapText="true" HBox.hgrow="ALWAYS"/>
                 </HBox>
                 
@@ -113,8 +113,12 @@
                     <Region HBox.hgrow="ALWAYS"/>
                     
                     <!-- Подсказка об управлении -->
-                    <Label text="🖌️ Ctrl+ЛКМ - перемещение | 🔍 Колесо - zoom | 🖌️ Клик - выбор" 
-                           style="-fx-font-size: 9px; -fx-text-fill: #666;"/>
+                    <VBox spacing="2" alignment="CENTER_RIGHT">
+                        <Label text="🖌️ Ctrl+ЛКМ - перемещение | 🔍 Колесо - zoom" 
+                               style="-fx-font-size: 9px; -fx-text-fill: #666;"/>
+                        <Label text="✏️ Alt+ЛКМ - перетаскивание точки | 🖌️ Клик - выбор" 
+                               style="-fx-font-size: 9px; -fx-text-fill: #666;"/>
+                    </VBox>
                 </HBox>
             </VBox>
         </VBox>
