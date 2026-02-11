@@ -6,6 +6,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import zakir.alekperov.application.locationplan.LocationPlanDTO;
+import zakir.alekperov.domain.locationplan.CoordinateSystemRegistry;
 
 import java.text.DecimalFormat;
 import java.util.List;
@@ -25,6 +26,9 @@ public class BuildingVisualizer {
     // Локальное смещение для работы с большими координатами
     private double originX = 0.0;
     private double originY = 0.0;
+    
+    // Система координат региона
+    private CoordinateSystemRegistry.CoordinateSystem coordinateSystem;
     
     // Цвета
     private static final Color BACKGROUND_COLOR = Color.rgb(250, 250, 250);
@@ -85,6 +89,23 @@ public class BuildingVisualizer {
     
     public double getOriginY() {
         return originY;
+    }
+    
+    /**
+     * Установить систему координат для региона.
+     */
+    public void setCoordinateSystem(CoordinateSystemRegistry.CoordinateSystem system) {
+        this.coordinateSystem = system;
+    }
+    
+    /**
+     * Установить систему координат по названию региона.
+     */
+    public void setRegion(String regionName) {
+        this.coordinateSystem = CoordinateSystemRegistry.getSystemForRegion(regionName);
+        if (coordinateSystem != null) {
+            System.out.println("🌍 Система координат: " + coordinateSystem.getCode() + " для региона " + regionName);
+        }
     }
     
     // Управление сеткой
@@ -523,13 +544,17 @@ public class BuildingVisualizer {
         gc.setFill(TEXT_COLOR);
         gc.setFont(Font.font("System", FontWeight.NORMAL, 10));
         
-        String boundsInfo = String.format("МСК-67: X[%s..%s], Y[%s..%s]", 
+        // Первая строка: система координат и диапазон
+        String coordinateSystemName = coordinateSystem != null ? coordinateSystem.getCode() : "МСК";
+        String boundsInfo = String.format("%s: X[%s..%s], Y[%s..%s]", 
+            coordinateSystemName,
             coordinateFormat.format(bounds.minX),
             coordinateFormat.format(bounds.maxX),
             coordinateFormat.format(bounds.minY),
             coordinateFormat.format(bounds.maxY));
         gc.fillText(boundsInfo, 10, canvas.getHeight() - 20);
         
+        // Вторая строка: масштаб, сетка, измерение
         String zoomInfo = String.format("Масштаб: %s | Сетка: %s (шаг %.0fм) | Измерение: %s", 
                                        transform.getScalePercent(), 
                                        gridVisible ? "ВКЛ" : "ВЫКЛ",
