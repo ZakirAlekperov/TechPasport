@@ -5,86 +5,205 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.stage.FileChooser;
+import zakir.alekperov.application.locationplan.*;
+import zakir.alekperov.domain.shared.ValidationException;
 import zakir.alekperov.ui.tabs.base.BaseTabController;
 
 import java.io.File;
 import java.time.LocalDate;
+import java.util.Optional;
 
 /**
  * Контроллер вкладки "Ситуационный план".
+ * Зависит только от интерфейсов use cases из application слоя.
  */
 public class LocationPlanTabController extends BaseTabController {
     
-    @FXML
-    private TextField scaleField;
+    private final SaveLocationPlanUseCase saveLocationPlanUseCase;
+    private final LoadLocationPlanUseCase loadLocationPlanUseCase;
+    private final AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase;
     
-    @FXML
-    private DatePicker creationDatePicker;
-    
-    @FXML
-    private TextField authorField;
-    
-    @FXML
-    private ImageView planImageView;
-    
-    @FXML
-    private Label placeholderLabel;
-    
-    @FXML
-    private Label imageInfoLabel;
-    
-    @FXML
-    private TextArea notesArea;
+    @FXML private ComboBox<String> scaleComboBox;
+    @FXML private DatePicker creationDatePicker;
+    @FXML private TextField authorField;
+    @FXML private ImageView planImageView;
+    @FXML private Label placeholderLabel;
+    @FXML private Label imageInfoLabel;
+    @FXML private TextArea notesArea;
+    @FXML private Button saveButton;
+    @FXML private Button clearButton;
+    @FXML private Button loadImageButton;
+    @FXML private Button removeImageButton;
+    @FXML private Button addCoordinatesButton;
+    @FXML private ListView<String> buildingsListView;
     
     private File currentImageFile;
+    private String currentPassportId;
+    
+    /**
+     * Конструктор с внедрением зависимостей.
+     */
+    public LocationPlanTabController(SaveLocationPlanUseCase saveLocationPlanUseCase,
+                                    LoadLocationPlanUseCase loadLocationPlanUseCase,
+                                    AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase) {
+        if (saveLocationPlanUseCase == null) {
+            throw new IllegalArgumentException("SaveLocationPlanUseCase не может быть null");
+        }
+        if (loadLocationPlanUseCase == null) {
+            throw new IllegalArgumentException("LoadLocationPlanUseCase не может быть null");
+        }
+        if (addBuildingCoordinatesUseCase == null) {
+            throw new IllegalArgumentException("AddBuildingCoordinatesUseCase не может быть null");
+        }
+        
+        this.saveLocationPlanUseCase = saveLocationPlanUseCase;
+        this.loadLocationPlanUseCase = loadLocationPlanUseCase;
+        this.addBuildingCoordinatesUseCase = addBuildingCoordinatesUseCase;
+    }
     
     @Override
     protected void setupBindings() {
-        // Показ/скрытие плейсхолдера
         planImageView.imageProperty().addListener((obs, oldImage, newImage) -> {
             placeholderLabel.setVisible(newImage == null);
+            if (removeImageButton != null) {
+                removeImageButton.setDisable(newImage == null);
+            }
         });
+        
+        if (scaleComboBox != null) {
+            scaleComboBox.getItems().addAll("100", "200", "500", "1000", "2000", "5000");
+            scaleComboBox.setValue("500");
+        }
     }
     
     @Override
     protected void loadInitialData() {
-        creationDatePicker.setValue(LocalDate.now());
+        if (creationDatePicker != null) {
+            creationDatePicker.setValue(LocalDate.now());
+        }
         placeholderLabel.setVisible(true);
+        
+        if (currentPassportId != null) {
+            loadLocationPlanData();
+        }
+    }
+    
+    public void setPassportId(String passportId) {
+        if (passportId == null || passportId.isBlank()) {
+            throw new IllegalArgumentException("ID паспорта не может быть пустым");
+        }
+        this.currentPassportId = passportId;
+        loadLocationPlanData();
+    }
+    
+    private void loadLocationPlanData() {
+        try {
+            LoadLocationPlanQuery query = new LoadLocationPlanQuery(currentPassportId);
+            Optional<LocationPlanDTO> planOptional = loadLocationPlanUseCase.execute(query);
+            
+            if (planOptional.isPresent()) {
+                LocationPlanDTO plan = planOptional.get();
+                
+                if (scaleComboBox != null) {
+                    scaleComboBox.setValue(String.valueOf(plan.scaleDenominator()));
+                }
+                if (authorField != null) {
+                    authorField.setText(plan.executorName());
+                }
+                if (creationDatePicker != null) {
+                    creationDatePicker.setValue(plan.planDate());
+                }
+                if (notesArea != null) {
+                    notesArea.setText(plan.notes());
+                }
+                
+                if (plan.imagePath() != null && !plan.imagePath().isBlank()) {
+                    loadImageFromPath(plan.imagePath());
+                }
+                
+                if (buildingsListView != null) {
+                    buildingsListView.getItems().clear();
+                    for (var building : plan.buildings()) {
+                        String item = String.format("Литера %s (%d точек)", 
+                            building.litera(), building.points().size());
+                        buildingsListView.getItems().add(item);
+                    }
+                }
+                
+                System.out.println("Данные ситуационного плана загружены");
+            } else {
+                System.out.println("Ситуационный план не найден, создается новый");
+            }
+            
+        } catch (ValidationException e) {
+            showError("Ошибка валидации", e.getMessage());
+        } catch (Exception e) {
+            showError("Ошибка загрузки", "Не удалось загрузить данные: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
     
     @Override
     public boolean validateData() {
-        if (scaleField.getText().isBlank()) {
-            showWarning("Укажите масштаб плана");
+        if (currentPassportId == null || currentPassportId.isBlank()) {
+            showWarning("ID паспорта не установлен");
             return false;
         }
+        
+        if (scaleComboBox == null || scaleComboBox.getValue() == null || scaleComboBox.getValue().isBlank()) {
+            showWarning("Укажите масштаб плана");
+            if (scaleComboBox != null) scaleComboBox.requestFocus();
+            return false;
+        }
+        
+        if (creationDatePicker == null || creationDatePicker.getValue() == null) {
+            showWarning("Укажите дату создания плана");
+            if (creationDatePicker != null) creationDatePicker.requestFocus();
+            return false;
+        }
+        
         return true;
     }
     
     @Override
     public void saveData() {
-        if (validateData()) {
-            System.out.println("Сохранение ситуационного плана...");
-            System.out.println("Масштаб: " + scaleField.getText());
-            if (currentImageFile != null) {
-                System.out.println("Файл: " + currentImageFile.getAbsolutePath());
-            }
+        if (!validateData()) {
+            return;
+        }
+        
+        try {
+            SaveLocationPlanCommand command = new SaveLocationPlanCommand(
+                currentPassportId,
+                scaleComboBox.getValue(),
+                authorField != null ? authorField.getText() : "",
+                creationDatePicker.getValue(),
+                notesArea != null ? notesArea.getText() : "",
+                currentImageFile != null ? currentImageFile.getAbsolutePath() : null
+            );
+            
+            saveLocationPlanUseCase.execute(command);
+            
             showInfo("Ситуационный план сохранен успешно");
+            
+        } catch (ValidationException e) {
+            showError("Ошибка валидации", e.getMessage());
+        } catch (Exception e) {
+            showError("Ошибка сохранения", "Не удалось сохранить: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     
     @Override
     public void clearData() {
-        scaleField.clear();
-        creationDatePicker.setValue(null);
-        authorField.clear();
-        notesArea.clear();
-        planImageView.setImage(null);
+        if (scaleComboBox != null) scaleComboBox.setValue("500");
+        if (creationDatePicker != null) creationDatePicker.setValue(LocalDate.now());
+        if (authorField != null) authorField.clear();
+        if (notesArea != null) notesArea.clear();
+        if (planImageView != null) planImageView.setImage(null);
         currentImageFile = null;
-        imageInfoLabel.setText("Изображение не загружено");
+        if (imageInfoLabel != null) imageInfoLabel.setText("Изображение не загружено");
+        if (buildingsListView != null) buildingsListView.getItems().clear();
     }
-    
-    // Обработчики событий
     
     @FXML
     private void handleLoadImage() {
@@ -101,19 +220,7 @@ public class LocationPlanTabController extends BaseTabController {
         File selectedFile = fileChooser.showOpenDialog(planImageView.getScene().getWindow());
         
         if (selectedFile != null) {
-            try {
-                Image image = new Image(selectedFile.toURI().toString());
-                planImageView.setImage(image);
-                currentImageFile = selectedFile;
-                
-                String fileName = selectedFile.getName();
-                long fileSize = selectedFile.length() / 1024; // KB
-                imageInfoLabel.setText(String.format("%s (%.0f KB, %.0f×%.0f px)", 
-                    fileName, (double) fileSize, image.getWidth(), image.getHeight()));
-                
-            } catch (Exception e) {
-                showError("Ошибка загрузки изображения: " + e.getMessage());
-            }
+            loadImageFromFile(selectedFile);
         }
     }
     
@@ -136,6 +243,11 @@ public class LocationPlanTabController extends BaseTabController {
     }
     
     @FXML
+    private void handleAddCoordinates() {
+        showInfo("Функция добавления координат в разработке");
+    }
+    
+    @FXML
     private void handleSave() {
         saveData();
     }
@@ -154,11 +266,35 @@ public class LocationPlanTabController extends BaseTabController {
         });
     }
     
-    // Вспомогательные методы
+    private void loadImageFromFile(File file) {
+        try {
+            Image image = new Image(file.toURI().toString());
+            planImageView.setImage(image);
+            currentImageFile = file;
+            
+            String fileName = file.getName();
+            long fileSize = file.length() / 1024;
+            imageInfoLabel.setText(String.format("%s (%.0f KB, %.0f×%.0f px)", 
+                fileName, (double) fileSize, image.getWidth(), image.getHeight()));
+            
+        } catch (Exception e) {
+            showError("Ошибка загрузки изображения", e.getMessage());
+            e.printStackTrace();
+        }
+    }
     
-    private void showError(String message) {
+    private void loadImageFromPath(String path) {
+        File file = new File(path);
+        if (file.exists()) {
+            loadImageFromFile(file);
+        } else {
+            imageInfoLabel.setText("Изображение не найдено: " + path);
+        }
+    }
+    
+    private void showError(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Ошибка");
+        alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
