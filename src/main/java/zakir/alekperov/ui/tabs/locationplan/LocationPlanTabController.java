@@ -19,6 +19,7 @@ import zakir.alekperov.domain.shared.ValidationException;
 import zakir.alekperov.ui.dialogs.AddBuildingDialogController;
 import zakir.alekperov.ui.tabs.base.BaseTabController;
 import zakir.alekperov.ui.visualization.BuildingVisualizer;
+import zakir.alekperov.ui.visualization.MeasurementTool;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -27,7 +28,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Контроллер вкладки "Ситуационный план" с координатной сеткой и интерактивностью.
+ * Контроллер вкладки "Ситуационный план" с инструментом измерения.
  */
 public class LocationPlanTabController extends BaseTabController {
     
@@ -58,6 +59,12 @@ public class LocationPlanTabController extends BaseTabController {
     // Элементы управления сеткой
     @FXML private CheckBox gridVisibleCheckBox;
     @FXML private ComboBox<String> gridSizeComboBox;
+    
+    // Элементы инструмента измерения
+    @FXML private CheckBox measurementActiveCheckBox;
+    @FXML private ComboBox<String> measurementModeComboBox;
+    @FXML private Button clearMeasurementButton;
+    @FXML private Label measurementInfoLabel;
     
     private String currentPassportId;
     private List<LocationPlanDTO.BuildingCoordinatesDTO> currentBuildings = new ArrayList<>();
@@ -104,6 +111,16 @@ public class LocationPlanTabController extends BaseTabController {
             gridSizeComboBox.setValue("10");
         }
         
+        // Инициализация инструмента измерения
+        if (measurementModeComboBox != null) {
+            measurementModeComboBox.getItems().addAll(
+                "📏 Расстояние (2 точки)",
+                "🔲 Периметр (полигон)",
+                "🟦 Площадь (полигон)"
+            );
+            measurementModeComboBox.setValue("📏 Расстояние (2 точки)");
+        }
+        
         if (buildingsListView != null) {
             buildingsListView.setCellFactory(param -> new BuildingListCell());
         }
@@ -135,7 +152,7 @@ public class LocationPlanTabController extends BaseTabController {
     }
     
     /**
-     * Настроить интерактивность Canvas: zoom, pan, selection, point editing.
+     * Настроить интерактивность Canvas: zoom, pan, selection, measurement.
      */
     private void setupCanvasInteraction() {
         buildingCanvas.setOnScroll((ScrollEvent event) -> {
@@ -157,14 +174,33 @@ public class LocationPlanTabController extends BaseTabController {
             } else {
                 String hoveredLitera = visualizer.findBuildingAt(event.getX(), event.getY(), currentBuildings);
                 visualizer.setHoveredBuilding(hoveredLitera);
-                buildingCanvas.setCursor(hoveredLitera != null ? javafx.scene.Cursor.HAND : javafx.scene.Cursor.DEFAULT);
+                
+                // Установить курсор в зависимости от режима
+                if (visualizer.getMeasurementTool().isActive()) {
+                    buildingCanvas.setCursor(javafx.scene.Cursor.CROSSHAIR);
+                } else {
+                    buildingCanvas.setCursor(hoveredLitera != null ? javafx.scene.Cursor.HAND : javafx.scene.Cursor.DEFAULT);
+                }
             }
             
             updateVisualization();
         });
         
         buildingCanvas.setOnMouseClicked(event -> {
-            if (event.getButton() == MouseButton.PRIMARY && !event.isControlDown() && visualizer != null) {
+            if (event.getButton() != MouseButton.PRIMARY || visualizer == null) return;
+            
+            // Режим измерения
+            if (visualizer.getMeasurementTool().isActive() && !event.isControlDown() && !event.isAltDown()) {
+                double[] worldCoords = visualizer.getTransform().canvasToWorld(event.getX(), event.getY());
+                visualizer.getMeasurementTool().addPoint(worldCoords[0], worldCoords[1]);
+                updateMeasurementInfo();
+                updateVisualization();
+                event.consume();
+                return;
+            }
+            
+            // Режим выделения здания
+            if (!event.isControlDown()) {
                 String clickedLitera = visualizer.findBuildingAt(event.getX(), event.getY(), currentBuildings);
                 
                 if (clickedLitera != null) {
@@ -267,7 +303,6 @@ public class LocationPlanTabController extends BaseTabController {
         if (visualizer != null && gridVisibleCheckBox != null) {
             visualizer.setGridVisible(gridVisibleCheckBox.isSelected());
             updateVisualization();
-            System.out.println("📐 Сетка: " + (gridVisibleCheckBox.isSelected() ? "ВКЛ" : "ВЫКЛ"));
         }
     }
     
@@ -281,11 +316,134 @@ public class LocationPlanTabController extends BaseTabController {
                 double newSize = Double.parseDouble(gridSizeComboBox.getValue());
                 visualizer.setGridSize(newSize);
                 updateVisualization();
-                System.out.println("📐 Шаг сетки изменен: " + newSize + "м");
             } catch (NumberFormatException e) {
                 System.err.println("⚠️ Некорректное значение шага сетки");
             }
         }
+    }
+    
+    /**
+     * Обработчик активации инструмента измерения.
+     */
+    @FXML
+    private void handleMeasurementActiveChange() {
+        if (visualizer != null && measurementActiveCheckBox != null) {
+            boolean active = measurementActiveCheckBox.isSelected();
+            visualizer.getMeasurementTool().setActive(active);
+            
+            if (measurementModeComboBox != null) {
+                measurementModeComboBox.setDisable(!active);
+            }
+            if (clearMeasurementButton != null) {
+                clearMeasurementButton.setDisable(!active);
+            }
+            
+            updateMeasurementInfo();
+            updateVisualization();
+            System.out.println("📏 Измерение: " + (active ? "ВКЛ" : "ВЫКЛ"));
+        }
+    }
+    
+    /**
+     * Обработчик изменения режима измерения.
+     */
+    @FXML
+    private void handleMeasurementModeChange() {
+        if (visualizer != null && measurementModeComboBox != null && measurementModeComboBox.getValue() != null) {
+            String selected = measurementModeComboBox.getValue();
+            MeasurementTool.MeasurementMode mode;
+            
+            if (selected.contains("Расстояние")) {
+                mode = MeasurementTool.MeasurementMode.DISTANCE;
+            } else if (selected.contains("Периметр")) {
+                mode = MeasurementTool.MeasurementMode.PERIMETER;
+            } else {
+                mode = MeasurementTool.MeasurementMode.AREA;
+            }
+            
+            visualizer.getMeasurementTool().setMode(mode);
+            updateMeasurementInfo();
+            updateVisualization();
+            System.out.println("📏 Режим: " + mode);
+        }
+    }
+    
+    /**
+     * Обработчик очистки измерения.
+     */
+    @FXML
+    private void handleClearMeasurement() {
+        if (visualizer != null) {
+            visualizer.getMeasurementTool().clearMeasurement();
+            updateMeasurementInfo();
+            updateVisualization();
+            System.out.println("📏 Измерение очищено");
+        }
+    }
+    
+    /**
+     * Обновить информацию об измерении.
+     */
+    private void updateMeasurementInfo() {
+        if (measurementInfoLabel == null || visualizer == null) return;
+        
+        MeasurementTool tool = visualizer.getMeasurementTool();
+        
+        if (!tool.isActive()) {
+            measurementInfoLabel.setText("Инструмент выключен");
+            return;
+        }
+        
+        if (!tool.hasPoints()) {
+            String modeText = "";
+            switch (tool.getMode()) {
+                case DISTANCE:
+                    modeText = "Кликните 2 точки для измерения расстояния";
+                    break;
+                case PERIMETER:
+                    modeText = "Кликните точки по контуру для периметра";
+                    break;
+                case AREA:
+                    modeText = "Кликните точки для вычисления площади";
+                    break;
+            }
+            measurementInfoLabel.setText(modeText);
+            return;
+        }
+        
+        StringBuilder info = new StringBuilder();
+        info.append("Точек: ").append(tool.getPointCount()).append(" | ");
+        
+        switch (tool.getMode()) {
+            case DISTANCE:
+                Double distance = tool.calculateDistance();
+                if (distance != null) {
+                    info.append(String.format("📏 Расстояние: %.2f м", distance));
+                } else {
+                    info.append("Добавьте еще точку");
+                }
+                break;
+                
+            case PERIMETER:
+                Double perimeter = tool.calculatePerimeter();
+                if (perimeter != null) {
+                    info.append(String.format("🔲 Периметр: %.2f м", perimeter));
+                } else {
+                    info.append("Добавьте еще точку");
+                }
+                break;
+                
+            case AREA:
+                Double area = tool.calculateArea();
+                if (area != null) {
+                    info.append(String.format("🟦 Площадь: %.2f м²", area));
+                } else {
+                    info.append("Добавьте еще " + (3 - tool.getPointCount()) + " точки");
+                }
+                break;
+        }
+        
+        measurementInfoLabel.setText(info.toString());
     }
     
     /**
@@ -349,8 +507,19 @@ public class LocationPlanTabController extends BaseTabController {
                 .orElse(null);
             
             if (building != null) {
-                String info = String.format("✅ Выбрано: Литера %s - %s (%d точек). Alt+ЛКМ на точке - редактирование.", 
-                    building.litera(), building.description(), building.points().size());
+                MeasurementTool.BuildingMeasurements measurements = 
+                    visualizer.getMeasurementTool().measureBuilding(building);
+                
+                String info;
+                if (measurements != null) {
+                    info = String.format("✅ Выбрано: %s - %s | P=%.2fм, S=%.2fм²", 
+                        building.litera(), building.description(), 
+                        measurements.perimeter, measurements.area);
+                } else {
+                    info = String.format("✅ Выбрано: %s - %s (%d точек)", 
+                        building.litera(), building.description(), building.points().size());
+                }
+                
                 selectedBuildingLabel.setText(info);
                 selectedBuildingLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #4CAF50; -fx-font-weight: bold;");
             }
@@ -643,6 +812,14 @@ public class LocationPlanTabController extends BaseTabController {
         StringBuilder info = new StringBuilder();
         info.append("Литера: ").append(item.getBuilding().litera()).append("\n");
         info.append("Описание: ").append(item.getBuilding().description()).append("\n\n");
+        
+        MeasurementTool.BuildingMeasurements measurements = 
+            visualizer.getMeasurementTool().measureBuilding(item.getBuilding());
+        if (measurements != null) {
+            info.append(String.format("Периметр: %.2f м\n", measurements.perimeter));
+            info.append(String.format("Площадь: %.2f м²\n\n", measurements.area));
+        }
+        
         info.append("Координаты:\n");
         
         int i = 1;
