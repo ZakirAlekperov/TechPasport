@@ -106,23 +106,22 @@ public class LocationPlanTabController extends BaseTabController {
     }
     
     /**
-     * Настроить автоматическое изменение размера Canvas БЕЗ циклических зависимостей.
+     * КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Canvas полностью управляется контейнером.
+     * Canvas НЕ участвует в расчете размера layout.
      */
     private void setupCanvasResize() {
-        // ИСПРАВЛЕНИЕ: Используем binding вместо listeners
-        // Canvas просто привязывается к размеру контейнера, но не влияет на него
-        buildingCanvas.widthProperty().bind(canvasContainer.widthProperty());
-        buildingCanvas.heightProperty().bind(canvasContainer.heightProperty());
+        // Отключаем участие Canvas в layout calculations
+        buildingCanvas.setManaged(false);
         
-        // Перерисовываем только когда контейнер меняется
-        canvasContainer.widthProperty().addListener((obs, oldVal, newVal) -> {
-            if (Math.abs(newVal.doubleValue() - oldVal.doubleValue()) > 1) {
-                updateVisualization();
-            }
-        });
-        
-        canvasContainer.heightProperty().addListener((obs, oldVal, newVal) -> {
-            if (Math.abs(newVal.doubleValue() - oldVal.doubleValue()) > 1) {
+        // Слушаем изменения контейнера и синхронизируем Canvas
+        canvasContainer.layoutBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
+            double width = newBounds.getWidth();
+            double height = newBounds.getHeight();
+            
+            // Устанавливаем размер Canvas равным контейнеру
+            if (width > 0 && height > 0) {
+                buildingCanvas.setWidth(width);
+                buildingCanvas.setHeight(height);
                 updateVisualization();
             }
         });
@@ -678,9 +677,6 @@ public class LocationPlanTabController extends BaseTabController {
         public LocationPlanDTO.BuildingCoordinatesDTO getBuilding() { return building; }
     }
     
-    /**
-     * ИСПРАВЛЕНИЕ 2: Кнопки всегда видны, текст с ellipsis.
-     */
     private class BuildingListCell extends ListCell<BuildingItem> {
         private final HBox content;
         private final Label textLabel;
@@ -690,17 +686,14 @@ public class LocationPlanTabController extends BaseTabController {
             content = new HBox(8);
             content.setAlignment(Pos.CENTER_LEFT);
             
-            // Текст с ограничением ширины и ellipsis
             textLabel = new Label();
             textLabel.setStyle("-fx-text-overrun: ellipsis;");
-            textLabel.setMaxWidth(150); // Фиксированная максимальная ширина
+            textLabel.setMaxWidth(150);
             HBox.setHgrow(textLabel, Priority.ALWAYS);
             
-            // Прокладка
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
             
-            // Кнопки с фиксированными размерами
             viewButton = new Button("👁️");
             viewButton.setTooltip(new Tooltip("Просмотреть"));
             viewButton.setStyle("-fx-font-size: 14px; -fx-padding: 4 8;");
