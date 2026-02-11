@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Контроллер вкладки "Ситуационный план" с поддержкой zoom/pan и выделения.
+ * Контроллер вкладки "Ситуационный план" с поддержкой zoom/pan, выделения и редактирования точек.
  */
 public class LocationPlanTabController extends BaseTabController {
     
@@ -44,30 +44,24 @@ public class LocationPlanTabController extends BaseTabController {
     @FXML private Button addCoordinatesButton;
     @FXML private ListView<BuildingItem> buildingsListView;
     
-    // Canvas для визуализации
     @FXML private Canvas buildingCanvas;
     @FXML private Label canvasPlaceholder;
     
-    // Кнопки управления масштабом
     @FXML private Button zoomInButton;
     @FXML private Button zoomOutButton;
     @FXML private Button zoomResetButton;
     
-    // Информационная панель о выбранном здании
     @FXML private Label selectedBuildingLabel;
     
     private String currentPassportId;
     private List<LocationPlanDTO.BuildingCoordinatesDTO> currentBuildings = new ArrayList<>();
     private BuildingVisualizer visualizer;
     
-    // Для обработки pan (перемещение)
     private double lastMouseX;
     private double lastMouseY;
     private boolean isPanning = false;
     
-    public LocationPlanTabController() {
-        // FXML требует пустого конструктора
-    }
+    public LocationPlanTabController() {}
     
     public LocationPlanTabController(SaveLocationPlanUseCase saveLocationPlanUseCase,
                                     LoadLocationPlanUseCase loadLocationPlanUseCase,
@@ -102,7 +96,6 @@ public class LocationPlanTabController extends BaseTabController {
             buildingsListView.setCellFactory(param -> new BuildingListCell());
         }
         
-        // Инициализация визуализатора
         if (buildingCanvas != null) {
             visualizer = new BuildingVisualizer(buildingCanvas);
             setupCanvasInteraction();
@@ -110,37 +103,36 @@ public class LocationPlanTabController extends BaseTabController {
     }
     
     /**
-     * Настроить интерактивность Canvas (zoom/pan/selection).
+     * Настроить интерактивность Canvas: zoom, pan, selection, point editing.
      */
     private void setupCanvasInteraction() {
         // Zoom колесом мыши
         buildingCanvas.setOnScroll((ScrollEvent event) -> {
             if (visualizer != null) {
-                visualizer.getTransform().zoomByScroll(
-                    event.getX(), 
-                    event.getY(), 
-                    event.getDeltaY()
-                );
+                visualizer.getTransform().zoomByScroll(event.getX(), event.getY(), event.getDeltaY());
                 updateVisualization();
                 event.consume();
             }
         });
         
-        // Hover - подсветка при наведении
+        // Hover - подсветка при наведении (здания или точки)
         buildingCanvas.setOnMouseMoved(event -> {
-            if (visualizer != null && !isPanning) {
+            if (visualizer == null || isPanning) return;
+            
+            // Сначала проверить, наведена ли точка (только для выбранного здания)
+            BuildingVisualizer.PointHandle point = visualizer.findPointAt(event.getX(), event.getY(), currentBuildings);
+            visualizer.setHoveredPoint(point);
+            
+            if (point != null) {
+                buildingCanvas.setCursor(javafx.scene.Cursor.CROSSHAIR);
+            } else {
+                // Если не точка, проверить здание
                 String hoveredLitera = visualizer.findBuildingAt(event.getX(), event.getY(), currentBuildings);
                 visualizer.setHoveredBuilding(hoveredLitera);
-                
-                // Изменить курсор
-                if (hoveredLitera != null) {
-                    buildingCanvas.setCursor(javafx.scene.Cursor.HAND);
-                } else {
-                    buildingCanvas.setCursor(javafx.scene.Cursor.DEFAULT);
-                }
-                
-                updateVisualization();
+                buildingCanvas.setCursor(hoveredLitera != null ? javafx.scene.Cursor.HAND : javafx.scene.Cursor.DEFAULT);
             }
+            
+            updateVisualization();
         });
         
         // Клик - выделение здания
@@ -149,7 +141,6 @@ public class LocationPlanTabController extends BaseTabController {
                 String clickedLitera = visualizer.findBuildingAt(event.getX(), event.getY(), currentBuildings);
                 
                 if (clickedLitera != null) {
-                    // Если кликнули по уже выделенному - снять выделение
                     if (clickedLitera.equals(visualizer.getSelectedBuilding())) {
                         visualizer.clearSelection();
                         updateSelectionInfo(null);
@@ -158,7 +149,6 @@ public class LocationPlanTabController extends BaseTabController {
                         updateSelectionInfo(clickedLitera);
                     }
                 } else {
-                    // Клик по пустому месту - снять выделение
                     visualizer.clearSelection();
                     updateSelectionInfo(null);
                 }
@@ -168,8 +158,11 @@ public class LocationPlanTabController extends BaseTabController {
             }
         });
         
-        // Pan (перемещение) средней кнопкой или Ctrl+левая кнопка
+        // Mouse pressed - начало pan или перетаскивания точки
         buildingCanvas.setOnMousePressed(event -> {
+            if (visualizer == null) return;
+            
+            // Pan средней кнопкой или Ctrl+левая
             if (event.getButton() == MouseButton.MIDDLE || 
                 (event.getButton() == MouseButton.PRIMARY && event.isControlDown())) {
                 isPanning = true;
@@ -177,35 +170,71 @@ public class LocationPlanTabController extends BaseTabController {
                 lastMouseY = event.getY();
                 buildingCanvas.setCursor(javafx.scene.Cursor.CLOSED_HAND);
                 event.consume();
+                return;
+            }
+            
+            // Перетаскивание точки левой кнопкой (Alt+ЛКМ для явного режима редактирования)
+            if (event.getButton() == MouseButton.PRIMARY && event.isAltDown()) {
+                BuildingVisualizer.PointHandle point = visualizer.findPointAt(event.getX(), event.getY(), currentBuildings);
+                if (point != null) {
+                    visualizer.startDraggingPoint(point);
+                    buildingCanvas.setCursor(javafx.scene.Cursor.MOVE);
+                    event.consume();
+                }
             }
         });
         
+        // Mouse dragged - перемещение Canvas или точки
         buildingCanvas.setOnMouseDragged(event -> {
-            if (isPanning && visualizer != null) {
+            if (visualizer == null) return;
+            
+            // Pan
+            if (isPanning) {
                 double dx = event.getX() - lastMouseX;
                 double dy = event.getY() - lastMouseY;
-                
                 visualizer.getTransform().pan(dx, dy);
-                updateVisualization();
-                
                 lastMouseX = event.getX();
                 lastMouseY = event.getY();
+                updateVisualization();
+                event.consume();
+                return;
+            }
+            
+            // Перетаскивание точки
+            if (visualizer.isDraggingPoint()) {
+                visualizer.updateDraggingPoint(event.getX(), event.getY());
+                updateVisualization();
                 event.consume();
             }
         });
         
+        // Mouse released - завершение pan или сохранение точки
         buildingCanvas.setOnMouseReleased(event -> {
+            if (visualizer == null) return;
+            
             if (isPanning) {
                 isPanning = false;
+                buildingCanvas.setCursor(javafx.scene.Cursor.DEFAULT);
+                event.consume();
+                return;
+            }
+            
+            // Сохранить новые координаты точки
+            if (visualizer.isDraggingPoint()) {
+                BuildingVisualizer.PointHandle point = visualizer.stopDraggingPoint();
+                if (point != null) {
+                    savePointCoordinates(point);
+                }
                 buildingCanvas.setCursor(javafx.scene.Cursor.DEFAULT);
                 event.consume();
             }
         });
         
-        // Очистить hover при выходе из canvas
+        // Mouse exited - очистить hover
         buildingCanvas.setOnMouseExited(event -> {
             if (visualizer != null) {
                 visualizer.setHoveredBuilding(null);
+                visualizer.setHoveredPoint(null);
                 buildingCanvas.setCursor(javafx.scene.Cursor.DEFAULT);
                 updateVisualization();
             }
@@ -213,25 +242,76 @@ public class LocationPlanTabController extends BaseTabController {
     }
     
     /**
-     * Обновить информацию о выбранном здании.
+     * Сохранить новые координаты точки в БД.
      */
-    private void updateSelectionInfo(String litera) {
-        if (selectedBuildingLabel == null) {
-            return;
+    private void savePointCoordinates(BuildingVisualizer.PointHandle point) {
+        try {
+            // Найти здание
+            LocationPlanDTO.BuildingCoordinatesDTO building = currentBuildings.stream()
+                .filter(b -> b.litera().equals(point.buildingLitera))
+                .findFirst()
+                .orElse(null);
+            
+            if (building == null) {
+                showError("Ошибка", "Здание не найдено");
+                return;
+            }
+            
+            // Создать новый список точек с обновлёнными координатами
+            List<AddBuildingCoordinatesCommand.CoordinatePointData> pointDatas = new ArrayList<>();
+            for (int i = 0; i < building.points().size(); i++) {
+                if (i == point.pointIndex) {
+                    // Обновлённая точка
+                    pointDatas.add(new AddBuildingCoordinatesCommand.CoordinatePointData(
+                        String.format("%.2f", point.worldX),
+                        String.format("%.2f", point.worldY)
+                    ));
+                } else {
+                    // Остальные точки без изменений
+                    LocationPlanDTO.CoordinatePointDTO p = building.points().get(i);
+                    pointDatas.add(new AddBuildingCoordinatesCommand.CoordinatePointData(p.x(), p.y()));
+                }
+            }
+            
+            // Удалить старое здание
+            DeleteBuildingCommand deleteCommand = new DeleteBuildingCommand(currentPassportId, building.litera());
+            deleteBuildingUseCase.execute(deleteCommand);
+            
+            // Создать новое с обновлёнными координатами
+            AddBuildingCoordinatesCommand addCommand = new AddBuildingCoordinatesCommand(
+                currentPassportId,
+                building.litera(),
+                building.description(),
+                pointDatas
+            );
+            addBuildingCoordinatesUseCase.execute(addCommand);
+            
+            // Перезагрузить данные
+            loadLocationPlanData();
+            
+            System.out.println("✓ Координаты точки обновлены");
+        } catch (Exception e) {
+            showError("Ошибка сохранения", e.getMessage());
+            e.printStackTrace();
+            // Откатить изменения
+            loadLocationPlanData();
         }
+    }
+    
+    private void updateSelectionInfo(String litera) {
+        if (selectedBuildingLabel == null) return;
         
         if (litera == null) {
-            selectedBuildingLabel.setText("Кликните по зданию для выбора");
+            selectedBuildingLabel.setText("Кликните по зданию для выбора. Alt+ЛКМ на точке - редактирование.");
             selectedBuildingLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #999;");
         } else {
-            // Найти здание по литере
             LocationPlanDTO.BuildingCoordinatesDTO building = currentBuildings.stream()
                 .filter(b -> b.litera().equals(litera))
                 .findFirst()
                 .orElse(null);
             
             if (building != null) {
-                String info = String.format("✅ Выбрано: Литера %s - %s (%d точек)", 
+                String info = String.format("✅ Выбрано: Литера %s - %s (%d точек). Alt+ЛКМ на точке - редактирование.", 
                     building.litera(), building.description(), building.points().size());
                 selectedBuildingLabel.setText(info);
                 selectedBuildingLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #4CAF50; -fx-font-weight: bold;");
