@@ -7,6 +7,7 @@
 
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
+            fx:controller="zakir.alekperov.ui.tabs.locationplan.LocationPlanTabController"
             prefHeight="600.0" prefWidth="900.0"
             stylesheets="@/ui/styles/app.css">
 
@@ -104,7 +105,7 @@
                 
                 <HBox spacing="10">
                     <Label text="Всего зданий:" style="-fx-font-weight: bold;"/>
-                    <Label text="0" style="-fx-text-fill: #2196F3; -fx-font-weight: bold;"/>
+                    <Label fx:id="buildingCountLabel" text="0" style="-fx-text-fill: #2196F3; -fx-font-weight: bold;"/>
                 </HBox>
                 
                 <VBox spacing="5" style="-fx-padding: 10; -fx-background-color: #e3f2fd; -fx-border-radius: 5; -fx-background-radius: 5;">
