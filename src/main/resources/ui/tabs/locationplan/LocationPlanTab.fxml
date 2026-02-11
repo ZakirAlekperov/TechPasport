@@ -7,7 +7,6 @@
 
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="zakir.alekperov.ui.tabs.locationplan.LocationPlanTabController"
             prefHeight="600.0" prefWidth="900.0"
             stylesheets="@/ui/styles/app.css">
 
