@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
@@ -10,71 +9,92 @@
       spacing="15" style="-fx-padding: 20;">
     
     <!-- Заголовок -->
-    <Label text="2. Состав объекта" 
+    <Label text="2. СОСТАВ ОБЪЕКТА" 
            style="-fx-font-size: 20; -fx-font-weight: bold;"/>
     
     <Separator/>
     
     <!-- Описание -->
-    <Label text="Перечень зданий и сооружений на земельном участке" 
-           style="-fx-font-size: 14; -fx-text-fill: #666666;"/>
+    <VBox spacing="5" style="-fx-padding: 10; -fx-background-color: #e3f2fd; -fx-background-radius: 5;">
+        <Label text="📋 Укажите все строения и сооружения на участке" 
+               style="-fx-font-weight: bold; -fx-font-size: 14;"/>
+        <Label text="В этом разделе перечисляются: жилой дом, хозяйственные постройки (баня, гараж, сарай и т.п.)" 
+               wrapText="true"
+               style="-fx-text-fill: #666; -fx-font-size: 12;"/>
+    </VBox>
     
-    <!-- Панель управления -->
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <Button text="Добавить здание" onAction="#handleAddBuilding" 
+    <!-- Таблица строений -->
+    <VBox spacing="10" VBox.vgrow="ALWAYS">
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Список строений и сооружений:" 
+                   style="-fx-font-weight: bold; -fx-font-size: 14;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="➕ Добавить строение" onAction="#handleAddBuilding"
+                    style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        </HBox>
+        
+        <TableView fx:id="buildingsTable" VBox.vgrow="ALWAYS" 
+                   style="-fx-min-height: 300px;">
+            <columns>
+                <TableColumn fx:id="letterColumn" text="Литера" prefWidth="60" minWidth="50"/>
+                <TableColumn fx:id="nameColumn" text="Наименование" prefWidth="150" minWidth="100"/>
+                <TableColumn fx:id="yearColumn" text="Год ввода" prefWidth="80" minWidth="70"/>
+                <TableColumn fx:id="materialColumn" text="Материал стен" prefWidth="120" minWidth="100"/>
+                <TableColumn fx:id="areaColumn" text="Площадь, кв.м" prefWidth="100" minWidth="80"/>
+                <TableColumn fx:id="heightColumn" text="Высота, м" prefWidth="80" minWidth="70"/>
+                <TableColumn fx:id="volumeColumn" text="Объем, куб.м" prefWidth="100" minWidth="80"/>
+                <TableColumn fx:id="valueColumn" text="Стоимость, руб." prefWidth="120" minWidth="100"/>
+                <TableColumn fx:id="actionsColumn" text="Действия" prefWidth="120" minWidth="100"/>
+            </columns>
+            <placeholder>
+                <VBox alignment="CENTER" spacing="10" style="-fx-padding: 20;">
+                    <Label text="🏗️" style="-fx-font-size: 48;"/>
+                    <Label text="Строения не добавлены" 
+                           style="-fx-font-size: 14; -fx-text-fill: #999;"/>
+                    <Label text="Нажмите кнопку 'Добавить строение' для начала" 
+                           style="-fx-font-size: 12; -fx-text-fill: #999;"/>
+                </VBox>
+            </placeholder>
+        </TableView>
+    </VBox>
+    
+    <!-- Итоги -->
+    <VBox spacing="5" style="-fx-padding: 15; -fx-background-color: #fff8e1; -fx-background-radius: 5;">
+        <Label text="Итого:" style="-fx-font-weight: bold; -fx-font-size: 14;"/>
+        <GridPane hgap="20" vgap="5">
+            <columnConstraints>
+                <ColumnConstraints minWidth="150"/>
+                <ColumnConstraints minWidth="100"/>
+            </columnConstraints>
+            
+            <Label text="Количество строений:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+            <Label fx:id="totalBuildingsLabel" text="0" 
+                   GridPane.rowIndex="0" GridPane.columnIndex="1"
+                   style="-fx-font-weight: bold;"/>
+            
+            <Label text="Общая площадь застройки:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+            <Label fx:id="totalAreaLabel" text="0.0 кв.м" 
+                   GridPane.rowIndex="1" GridPane.columnIndex="1"
+                   style="-fx-font-weight: bold;"/>
+            
+            <Label text="Общий объем:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+            <Label fx:id="totalVolumeLabel" text="0.0 куб.м" 
+                   GridPane.rowIndex="2" GridPane.columnIndex="1"
+                   style="-fx-font-weight: bold;"/>
+            
+            <Label text="Общая инвентаризационная стоимость:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+            <Label fx:id="totalValueLabel" text="0.00 руб." 
+                   GridPane.rowIndex="3" GridPane.columnIndex="1"
+                   style="-fx-font-weight: bold;"/>
+        </GridPane>
+    </VBox>
+    
+    <!-- Кнопки -->
+    <HBox spacing="10" style="-fx-alignment: center-right; -fx-padding: 10 0 0 0;">
+        <Button text="Очистить все" onAction="#handleClear" 
                 style="-fx-min-width: 120;"/>
-        <Button text="Редактировать" onAction="#handleEditBuilding" 
-                style="-fx-min-width: 120;"/>
-        <Button text="Удалить" onAction="#handleDeleteBuilding" 
-                style="-fx-min-width: 120;"/>
-        
-        <Region HBox.hgrow="ALWAYS"/>
-        
-        <Label text="Всего зданий:"/>
-        <Label fx:id="totalBuildingsLabel" text="0" 
-               style="-fx-font-weight: bold;"/>
+        <Button text="Сохранить" onAction="#handleSave" 
+                style="-fx-min-width: 120; -fx-background-color: #4CAF50; -fx-text-fill: white;"/>
     </HBox>
-    
-    <!-- Таблица зданий -->
-    <TableView fx:id="buildingsTable" VBox.vgrow="ALWAYS">
-        <columns>
-            <TableColumn fx:id="literaColumn" text="Литера" prefWidth="80" minWidth="60"/>
-            <TableColumn fx:id="nameColumn" text="Наименование" prefWidth="200" minWidth="150"/>
-            <TableColumn fx:id="yearColumn" text="Год постройки" prefWidth="100" minWidth="80"/>
-            <TableColumn fx:id="wallMaterialColumn" text="Материал стен" prefWidth="150" minWidth="120"/>
-            <TableColumn fx:id="areaColumn" text="Площадь застройки, кв.м" prefWidth="120" minWidth="100"/>
-            <TableColumn fx:id="heightColumn" text="Высота, м" prefWidth="100" minWidth="80"/>
-            <TableColumn fx:id="volumeColumn" text="Объем, куб.м" prefWidth="100" minWidth="80"/>
-            <TableColumn fx:id="costColumn" text="Инвент. стоимость, руб." prefWidth="150" minWidth="120"/>
-        </columns>
-        
-        <placeholder>
-            <Label text="Нет данных. Нажмите 'Добавить здание' для начала работы"/>
-        </placeholder>
-    </TableView>
-    
-    <!-- Итоговая информация -->
-    <HBox spacing="20" style="-fx-padding: 10; -fx-background-color: #f0f0f0; -fx-background-radius: 5;">
-        <VBox spacing="5">
-            <Label text="Общая площадь застройки:" style="-fx-font-weight: bold;"/>
-            <Label fx:id="totalAreaLabel" text="0.00 кв.м" style="-fx-font-size: 14;"/>
-        </VBox>
-        
-        <VBox spacing="5">
-            <Label text="Общий объем:" style="-fx-font-weight: bold;"/>
-            <Label fx:id="totalVolumeLabel" text="0.00 куб.м" style="-fx-font-size: 14;"/>
-        </VBox>
-        
-        <VBox spacing="5">
-            <Label text="Общая стоимость:" style="-fx-font-weight: bold;"/>
-            <Label fx:id="totalCostLabel" text="0.00 руб." style="-fx-font-size: 14;"/>
-        </VBox>
-    </HBox>
-    
-    <!-- Кнопки действий -->
-    <HBox spacing="10" alignment="CENTER_RIGHT">
-        <Button text="Очистить" onAction="#handleClear" style="-fx-min-width: 100;"/>
-        <Button text="Сохранить" onAction="#handleSave" style="-fx-min-width: 100;"/>
-    </HBox>
-    
+
 </VBox>

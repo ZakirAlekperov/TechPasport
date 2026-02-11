@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
@@ -9,89 +8,127 @@
             fx:controller="zakir.alekperov.ui.tabs.commoninfo.CommonInfoTabController"
             fitToWidth="true">
     
-    <VBox spacing="20" style="-fx-padding: 20;">
+    <VBox spacing="15" style="-fx-padding: 20;">
         
-        <!-- Заголовок раздела -->
-        <Label text="1. Общие сведения" 
+        <!-- Заголовок -->
+        <Label text="1. ОБЩИЕ СВЕДЕНИЯ" 
                style="-fx-font-size: 20; -fx-font-weight: bold;"/>
         
         <Separator/>
         
-        <!-- Адрес объекта -->
-        <VBox spacing="10">
-            <Label text="Адрес (местоположение) объекта" 
+        <!-- АДРЕС ОБЪЕКТА -->
+        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #f9f9f9; -fx-background-radius: 5;">
+            <Label text="Адрес объекта (местоположение)" 
                    style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+            
+            <Label text="Вводите адрес свободно. При сохранении система проверит правильность через базу ФИАС."
+                   style="-fx-text-fill: #666; -fx-font-style: italic; -fx-font-size: 12;"/>
             
             <GridPane hgap="10" vgap="10">
                 <columnConstraints>
-                    <ColumnConstraints minWidth="150" prefWidth="150"/>
+                    <ColumnConstraints minWidth="200" prefWidth="200"/>
                     <ColumnConstraints hgrow="ALWAYS"/>
                 </columnConstraints>
                 
-                <!-- Субъект РФ -->
-                <Label text="Субъект Российской Федерации:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                <TextField fx:id="regionField" GridPane.rowIndex="0" GridPane.columnIndex="1" 
-                           promptText="Например: Смоленская область"/>
+                <Label text="Субъект РФ:*" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <TextField fx:id="regionField" 
+                           GridPane.rowIndex="0" GridPane.columnIndex="1" 
+                           promptText="Например: Москва, Смоленская область"/>
                 
-                <!-- Административный район -->
                 <Label text="Административный район (округ):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                <TextField fx:id="districtField" GridPane.rowIndex="1" GridPane.columnIndex="1" 
-                           promptText="Например: Вяземский"/>
+                <TextField fx:id="districtField" 
+                           GridPane.rowIndex="1" GridPane.columnIndex="1" 
+                           promptText="Необязательно"/>
                 
-                <!-- Город -->
-                <Label text="Город (пос.):" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                <TextField fx:id="cityField" GridPane.rowIndex="2" GridPane.columnIndex="1" 
-                           promptText="Например: г.Вязьма"/>
+                <Label text="Город (населенный пункт):*" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                <TextField fx:id="cityField" 
+                           GridPane.rowIndex="2" GridPane.columnIndex="1" 
+                           promptText="Например: Смоленск"/>
                 
-                <!-- Улица -->
-                <Label text="Улица (пер.):" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                <TextField fx:id="streetField" GridPane.rowIndex="3" GridPane.columnIndex="1" 
-                           promptText="Например: ул.Стачечная"/>
+                <Label text="Район города:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                <TextField fx:id="cityDistrictField" 
+                           GridPane.rowIndex="3" GridPane.columnIndex="1" 
+                           promptText="Необязательно"/>
                 
-                <!-- Номер дома -->
-                <Label text="Дом №:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-                <HBox spacing="10" GridPane.rowIndex="4" GridPane.columnIndex="1">
-                    <TextField fx:id="houseNumberField" prefWidth="100" promptText="10"/>
-                    <Label text="Строение (корпус):"/>
-                    <TextField fx:id="buildingNumberField" prefWidth="100" promptText="Опционально"/>
-                </HBox>
+                <Label text="Улица (переулок):*" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                <TextField fx:id="streetField" 
+                           GridPane.rowIndex="4" GridPane.columnIndex="1" 
+                           promptText="Например: улица Ленина"/>
+                
+                <Label text="Дом №:*" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                <TextField fx:id="houseField" 
+                           GridPane.rowIndex="5" GridPane.columnIndex="1" 
+                           promptText="Например: 12, 5А"
+                           prefWidth="150"/>
+                
+                <Label text="Строение (корпус):" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+                <TextField fx:id="buildingField" 
+                           GridPane.rowIndex="6" GridPane.columnIndex="1" 
+                           promptText="Необязательно"
+                           prefWidth="150"/>
             </GridPane>
+            
+            <Label text="* - обязательные поля" 
+                   style="-fx-text-fill: #999; -fx-font-size: 11;"/>
+        </VBox>
+        
+        <!-- Проверенный адрес -->
+        <VBox fx:id="validatedAddressBox" 
+              spacing="5" 
+              style="-fx-padding: 15; -fx-background-color: #e8f5e9; -fx-background-radius: 5;"
+              visible="false" managed="false">
+            <HBox spacing="5" alignment="CENTER_LEFT">
+                <Label text="✓" style="-fx-font-size: 16; -fx-text-fill: green; -fx-font-weight: bold;"/>
+                <Label text="Адрес проверен и подтвержден:" style="-fx-font-weight: bold;"/>
+            </HBox>
+            <Label fx:id="validatedAddressLabel" 
+                   wrapText="true"
+                   style="-fx-text-fill: #333;"/>
+            <Label fx:id="postalCodeLabel" 
+                   style="-fx-text-fill: #666; -fx-font-size: 11;"/>
         </VBox>
         
         <Separator/>
         
-        <!-- Основная информация -->
-        <VBox spacing="10">
-            <Label text="Основная информация" 
+        <!-- ХАРАКТЕРИСТИКИ ОБЪЕКТА -->
+        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #f0f8ff; -fx-background-radius: 5;">
+            <Label text="Характеристики объекта" 
                    style="-fx-font-size: 16; -fx-font-weight: bold;"/>
             
             <GridPane hgap="10" vgap="10">
                 <columnConstraints>
-                    <ColumnConstraints minWidth="150" prefWidth="150"/>
+                    <ColumnConstraints minWidth="200" prefWidth="200"/>
                     <ColumnConstraints hgrow="ALWAYS"/>
                 </columnConstraints>
                 
                 <!-- Назначение -->
-                <Label text="Назначение:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                <ComboBox fx:id="purposeComboBox" GridPane.rowIndex="0" GridPane.columnIndex="1" 
-                          maxWidth="Infinity"/>
+                <Label text="Назначение:*" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <ComboBox fx:id="purposeField" 
+                          GridPane.rowIndex="0" GridPane.columnIndex="1"
+                          promptText="Выберите назначение"
+                          prefWidth="300"/>
                 
                 <!-- Фактическое использование -->
-                <Label text="Фактическое использование:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                <ComboBox fx:id="actualUseComboBox" GridPane.rowIndex="1" GridPane.columnIndex="1" 
-                          maxWidth="Infinity"/>
+                <Label text="Фактическое использование:*" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                <ComboBox fx:id="actualUseField" 
+                          GridPane.rowIndex="1" GridPane.columnIndex="1"
+                          promptText="Выберите вариант"
+                          prefWidth="300"/>
                 
                 <!-- Год постройки -->
-                <Label text="Год постройки:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                <TextField fx:id="constructionYearField" GridPane.rowIndex="2" GridPane.columnIndex="1" 
-                           prefWidth="150" promptText="Например: 2024"/>
+                <Label text="Год постройки:*" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                <HBox spacing="10" GridPane.rowIndex="2" GridPane.columnIndex="1">
+                    <TextField fx:id="buildYearField" 
+                               promptText="Например: 2020"
+                               prefWidth="150"/>
+                    <Label text="(Год ввода в эксплуатацию)" 
+                           style="-fx-text-fill: #666; -fx-font-size: 11;"/>
+                </HBox>
             </GridPane>
         </VBox>
         
-        <Separator/>
-        
-        <!-- Площади и этажность -->
-        <VBox spacing="10">
+        <!-- ПЛОЩАДИ И ЭТАЖНОСТЬ -->
+        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #fff8e1; -fx-background-radius: 5;">
             <Label text="Площади и этажность" 
                    style="-fx-font-size: 16; -fx-font-weight: bold;"/>
             
@@ -102,75 +139,68 @@
                 </columnConstraints>
                 
                 <!-- Общая площадь -->
-                <Label text="Общая площадь жилого дома (кв.м):" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                <TextField fx:id="totalAreaField" GridPane.rowIndex="0" GridPane.columnIndex="1" 
-                           prefWidth="150" promptText="Например: 234.1"/>
+                <Label text="Общая площадь (кв.м):*" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <HBox spacing="10" GridPane.rowIndex="0" GridPane.columnIndex="1">
+                    <TextField fx:id="totalAreaField" 
+                               promptText="Например: 120.5"
+                               prefWidth="150"/>
+                    <Label text="кв.м" style="-fx-text-fill: #666;"/>
+                </HBox>
                 
                 <!-- Жилая площадь -->
-                <Label text="Жилая площадь жилого дома (кв.м):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                <TextField fx:id="livingAreaField" GridPane.rowIndex="1" GridPane.columnIndex="1" 
-                           prefWidth="150" promptText="Например: 91.8"/>
+                <Label text="Жилая площадь (кв.м):*" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                <HBox spacing="10" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                    <TextField fx:id="livingAreaField" 
+                               promptText="Например: 80.0"
+                               prefWidth="150"/>
+                    <Label text="кв.м (должна быть меньше общей)" 
+                           style="-fx-text-fill: #666; -fx-font-size: 11;"/>
+                </HBox>
                 
-                <!-- Надземные этажи -->
-                <Label text="Число этажей надземной части:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                <TextField fx:id="aboveGroundFloorsField" GridPane.rowIndex="2" GridPane.columnIndex="1" 
-                           prefWidth="150" promptText="Например: 2"/>
+                <!-- Число надземных этажей -->
+                <Label text="Число этажей (надземная часть):*" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                <HBox spacing="10" GridPane.rowIndex="2" GridPane.columnIndex="1">
+                    <Spinner fx:id="aboveGroundFloorsSpinner" 
+                             prefWidth="100"
+                             editable="true"/>
+                    <Label text="этажей" style="-fx-text-fill: #666;"/>
+                </HBox>
                 
-                <!-- Подземные этажи -->
-                <Label text="Число этажей подземной части:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                <TextField fx:id="undergroundFloorsField" GridPane.rowIndex="3" GridPane.columnIndex="1" 
-                           prefWidth="150" promptText="Например: 1"/>
+                <!-- Число подземных этажей -->
+                <Label text="Число этажей (подземная часть):" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                <HBox spacing="10" GridPane.rowIndex="3" GridPane.columnIndex="1">
+                    <Spinner fx:id="undergroundFloorsSpinner" 
+                             prefWidth="100"
+                             editable="true"/>
+                    <Label text="этажей (обычно 0-1, если есть подвал/цоколь)" 
+                           style="-fx-text-fill: #666; -fx-font-size: 11;"/>
+                </HBox>
             </GridPane>
         </VBox>
         
-        <Separator/>
-        
-        <!-- Реквизиты паспорта -->
-        <VBox spacing="10">
-            <Label text="Реквизиты паспорта" 
-                   style="-fx-font-size: 16; -fx-font-weight: bold;"/>
-            
-            <GridPane hgap="10" vgap="10">
-                <columnConstraints>
-                    <ColumnConstraints minWidth="150" prefWidth="150"/>
-                    <ColumnConstraints hgrow="ALWAYS"/>
-                </columnConstraints>
-                
-                <!-- Инвентарный номер -->
-                <Label text="Инвентарный номер:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                <TextField fx:id="inventoryNumberField" GridPane.rowIndex="0" GridPane.columnIndex="1" 
-                           promptText="Например: 00:000:002:000040920"/>
-                
-                <!-- Кадастровый номер -->
-                <Label text="Кадастровый номер:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                <TextField fx:id="cadastralNumberField" GridPane.rowIndex="1" GridPane.columnIndex="1" 
-                           promptText="Опционально"/>
-                
-                <!-- Дата составления -->
-                <Label text="Дата составления паспорта:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                <DatePicker fx:id="compilationDatePicker" GridPane.rowIndex="2" GridPane.columnIndex="1" 
-                            maxWidth="200"/>
-            </GridPane>
-        </VBox>
-        
-        <Separator/>
-        
-        <!-- Примечание -->
-        <VBox spacing="10">
+        <!-- ПРИМЕЧАНИЕ -->
+        <VBox spacing="10" style="-fx-padding: 15; -fx-background-color: #f9f9f9; -fx-background-radius: 5;">
             <Label text="Примечание" 
                    style="-fx-font-size: 16; -fx-font-weight: bold;"/>
             
-            <TextArea fx:id="notesArea" prefRowCount="4" wrapText="true" 
-                      promptText="Дополнительная информация об объекте"/>
+            <Label text="Укажите дополнительные сведения, например: нарушения строительных норм, отсутствие разрешения на строительство и т.д."
+                   wrapText="true"
+                   style="-fx-text-fill: #666; -fx-font-size: 11;"/>
+            
+            <TextArea fx:id="remarksField" 
+                      promptText="Необязательное поле"
+                      prefRowCount="3"
+                      wrapText="true"/>
         </VBox>
         
-        <!-- Кнопки действий -->
-        <HBox spacing="10" alignment="CENTER_RIGHT">
-            <Button text="Очистить" onAction="#handleClear" style="-fx-min-width: 100;"/>
-            <Button text="Сохранить" onAction="#handleSave" style="-fx-min-width: 100;" 
-                    styleClass="primary-button"/>
+        <!-- Кнопки -->
+        <HBox spacing="10" style="-fx-alignment: center-right; -fx-padding: 10 0 0 0;">
+            <Button text="Очистить" onAction="#handleClear" 
+                    style="-fx-min-width: 120;"/>
+            <Button text="Проверить и сохранить" onAction="#handleSave" 
+                    style="-fx-min-width: 180; -fx-background-color: #4CAF50; -fx-text-fill: white;"/>
         </HBox>
-        
+    
     </VBox>
     
 </ScrollPane>

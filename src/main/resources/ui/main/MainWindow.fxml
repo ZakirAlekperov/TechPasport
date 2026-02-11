@@ -1,17 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.TabPane?>
-<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx/21"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="zakir.alekperov.ui.main.MainWindowController">
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="zakir.alekperov.ui.MainWindowController"
+            prefHeight="700.0" prefWidth="1000.0">
+
+    <top>
+        <MenuBar>
+            <Menu text="Файл">
+                <MenuItem text="Новый паспорт" onAction="#handleNewPassport"/>
+                <MenuItem text="Открыть..." onAction="#handleOpenPassport"/>
+                <MenuItem text="Сохранить" onAction="#handleSavePassport"/>
+                <MenuItem text="Сохранить как..." onAction="#handleSaveAsPassport"/>
+                <SeparatorMenuItem/>
+                <MenuItem text="Экспорт в PDF" onAction="#handleExportPDF"/>
+                <MenuItem text="Печать..." onAction="#handlePrint"/>
+                <SeparatorMenuItem/>
+                <MenuItem text="Выход" onAction="#handleExit"/>
+            </Menu>
+            <Menu text="Справка">
+                <MenuItem text="О программе" onAction="#handleAbout"/>
+            </Menu>
+        </MenuBar>
+    </top>
 
     <center>
-        <TabPane fx:id="mainTabPane"
-                 tabClosingPolicy="UNAVAILABLE">
-            <!-- Вкладки будем добавлять из контроллера -->
+        <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE">
+            
+            <Tab text="1. Общие сведения" closable="false">
+                <fx:include source="/ui/tabs/common-info/CommonInfoTab.fxml"/>
+            </Tab>
+            
+            <Tab text="2. Состав объекта" closable="false">
+                <fx:include source="/ui/tabs/object-composition/ObjectCompositionTab.fxml"/>
+            </Tab>
+            
+            <Tab text="3. Правообладатели" closable="false">
+    <fx:include source="/ui/tabs/owners/OwnersTab.fxml"/>
+</Tab>
+
+            
+
+            <Tab text="4. Ситуационный план" closable="false" disable="true"/>
+            <Tab text="5. Благоустройство" closable="false" disable="true"/>
+            <Tab text="6. Поэтажный план" closable="false" disable="true"/>
+            <Tab text="7. Экспликация" closable="false" disable="true"/>
+            
         </TabPane>
     </center>
+
+    <bottom>
+        <HBox style="-fx-padding: 5; -fx-spacing: 10; -fx-background-color: #f0f0f0;">
+            <Label text="Готов"/>
+        </HBox>
+    </bottom>
 
 </BorderPane>
