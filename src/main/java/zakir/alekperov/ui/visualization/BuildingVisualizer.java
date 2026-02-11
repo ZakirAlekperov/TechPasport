@@ -10,13 +10,14 @@ import zakir.alekperov.application.locationplan.LocationPlanDTO;
 import java.util.List;
 
 /**
- * Класс для визуализации зданий на Canvas с координатной сеткой, выделением и редактированием.
+ * Класс для визуализации зданий с инструментом измерения.
  */
 public class BuildingVisualizer {
     
     private final Canvas canvas;
     private final GraphicsContext gc;
     private final CanvasTransform transform;
+    private final MeasurementTool measurementTool;
     
     // Цвета
     private static final Color BACKGROUND_COLOR = Color.rgb(250, 250, 250);
@@ -46,7 +47,7 @@ public class BuildingVisualizer {
     
     // Настройки сетки
     private boolean gridVisible = true;
-    private double gridSize = 10.0; // шаг сетки в метрах
+    private double gridSize = 10.0;
     
     // Состояние выделения
     private String selectedBuildingLitera = null;
@@ -60,10 +61,15 @@ public class BuildingVisualizer {
         this.canvas = canvas;
         this.gc = canvas.getGraphicsContext2D();
         this.transform = new CanvasTransform();
+        this.measurementTool = new MeasurementTool();
     }
     
     public CanvasTransform getTransform() {
         return transform;
+    }
+    
+    public MeasurementTool getMeasurementTool() {
+        return measurementTool;
     }
     
     // Управление сеткой
@@ -261,12 +267,11 @@ public class BuildingVisualizer {
         gc.save();
         transform.apply(gc);
         
-        // Отрисовать сетку если включена
         if (gridVisible) {
             drawGrid(bounds);
         }
         
-        // Сначала отрисовать обычные здания
+        // Отрисовать здания
         for (LocationPlanDTO.BuildingCoordinatesDTO building : buildings) {
             String litera = building.litera();
             if (!litera.equals(selectedBuildingLitera) && !litera.equals(hoveredBuildingLitera)) {
@@ -274,7 +279,6 @@ public class BuildingVisualizer {
             }
         }
         
-        // Затем здание под курсором
         if (hoveredBuildingLitera != null && !hoveredBuildingLitera.equals(selectedBuildingLitera)) {
             for (LocationPlanDTO.BuildingCoordinatesDTO building : buildings) {
                 if (building.litera().equals(hoveredBuildingLitera)) {
@@ -284,7 +288,6 @@ public class BuildingVisualizer {
             }
         }
         
-        // И наконец выделенное здание (поверх всех)
         if (selectedBuildingLitera != null) {
             for (LocationPlanDTO.BuildingCoordinatesDTO building : buildings) {
                 if (building.litera().equals(selectedBuildingLitera)) {
@@ -293,6 +296,9 @@ public class BuildingVisualizer {
                 }
             }
         }
+        
+        // Отрисовать измерения
+        measurementTool.draw(gc, transform);
         
         gc.restore();
         drawScaleInfo(bounds);
@@ -332,22 +338,16 @@ public class BuildingVisualizer {
         return new Bounds(minX, maxX, minY, maxY);
     }
     
-    /**
-     * Отрисовка координатной сетки с подписями.
-     */
     private void drawGrid(Bounds bounds) {
-        // Расширяем границы до ближайших кратных gridSize
         double startX = Math.floor(bounds.minX / gridSize) * gridSize;
         double endX = Math.ceil(bounds.maxX / gridSize) * gridSize;
         double startY = Math.floor(bounds.minY / gridSize) * gridSize;
         double endY = Math.ceil(bounds.maxY / gridSize) * gridSize;
         
-        // Размер шрифта зависит от масштаба
         double fontSize = 8.0 / transform.getScale();
         gc.setFont(Font.font("System", FontWeight.NORMAL, fontSize));
         gc.setFill(GRID_TEXT_COLOR);
         
-        // Вертикальные линии
         for (double x = startX; x <= endX; x += gridSize) {
             boolean isMajor = (Math.abs(x) % (gridSize * 5) < 0.01);
             
@@ -355,13 +355,11 @@ public class BuildingVisualizer {
             gc.setLineWidth((isMajor ? 1.0 : 0.5) / transform.getScale());
             gc.strokeLine(x, startY, x, endY);
             
-            // Подписи только на главных линиях
             if (isMajor) {
                 gc.fillText(String.format("%.0f", x), x + 1 / transform.getScale(), startY + 10 / transform.getScale());
             }
         }
         
-        // Горизонтальные линии
         for (double y = startY; y <= endY; y += gridSize) {
             boolean isMajor = (Math.abs(y) % (gridSize * 5) < 0.01);
             
@@ -369,7 +367,6 @@ public class BuildingVisualizer {
             gc.setLineWidth((isMajor ? 1.0 : 0.5) / transform.getScale());
             gc.strokeLine(startX, y, endX, y);
             
-            // Подписи только на главных линиях
             if (isMajor) {
                 gc.fillText(String.format("%.0f", y), startX + 1 / transform.getScale(), y - 2 / transform.getScale());
             }
@@ -429,7 +426,6 @@ public class BuildingVisualizer {
         gc.setLineWidth(strokeWidth / transform.getScale());
         gc.strokePolygon(xPoints, yPoints, points.size());
         
-        // Отрисовать точки
         for (int i = 0; i < xPoints.length; i++) {
             Color pointColor = POINT_COLOR;
             double pointRadius = POINT_RADIUS / transform.getScale();
@@ -456,7 +452,6 @@ public class BuildingVisualizer {
             );
         }
         
-        // Отрисовать литеру
         double centerX = 0;
         double centerY = 0;
         for (int i = 0; i < xPoints.length; i++) {
@@ -481,10 +476,11 @@ public class BuildingVisualizer {
                                          bounds.minX, bounds.maxX, bounds.minY, bounds.maxY);
         gc.fillText(boundsInfo, 10, canvas.getHeight() - 20);
         
-        String zoomInfo = String.format("Масштаб: %s | Сетка: %s (шаг %.0fм)", 
+        String zoomInfo = String.format("Масштаб: %s | Сетка: %s (шаг %.0fм) | Измерение: %s", 
                                        transform.getScalePercent(), 
                                        gridVisible ? "ВКЛ" : "ВЫКЛ",
-                                       gridSize);
+                                       gridSize,
+                                       measurementTool.isActive() ? "ВКЛ" : "ВЫКЛ");
         gc.fillText(zoomInfo, 10, canvas.getHeight() - 5);
     }
     
