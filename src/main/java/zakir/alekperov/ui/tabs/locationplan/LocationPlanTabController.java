@@ -17,6 +17,8 @@ import javafx.stage.Stage;
 import zakir.alekperov.application.locationplan.*;
 import zakir.alekperov.domain.shared.ValidationException;
 import zakir.alekperov.ui.dialogs.AddBuildingDialogController;
+import zakir.alekperov.ui.dialogs.ExportDialog;
+import zakir.alekperov.ui.export.CanvasExporter;
 import zakir.alekperov.ui.tabs.base.BaseTabController;
 import zakir.alekperov.ui.visualization.BuildingVisualizer;
 import zakir.alekperov.ui.visualization.MeasurementTool;
@@ -45,6 +47,7 @@ public class LocationPlanTabController extends BaseTabController {
     @FXML private Button saveButton;
     @FXML private Button clearButton;
     @FXML private Button addCoordinatesButton;
+    @FXML private Button exportButton;  // 🆕 Кнопка экспорта
     @FXML private ListView<BuildingItem> buildingsListView;
     
     @FXML private Canvas buildingCanvas;
@@ -320,6 +323,46 @@ public class LocationPlanTabController extends BaseTabController {
                 updateVisualization();
             }
         });
+    }
+    
+    /**
+     * 🆕 ЭКСПОРТ: Открыть диалог экспорта и сохранить изображение.
+     */
+    @FXML
+    private void handleExport() {
+        if (currentBuildings == null || currentBuildings.isEmpty()) {
+            showWarning("Ситуационный план пуст", "Сначала добавьте здания на план");
+            return;
+        }
+        
+        try {
+            // Создать диалог экспорта
+            ExportDialog dialog = new ExportDialog();
+            Optional<ExportDialog.ExportSettings> result = dialog.showAndWait();
+            
+            if (result.isPresent()) {
+                ExportDialog.ExportSettings settings = result.get();
+                
+                // Получить информацию о системе координат и масштабе
+                String coordinateSystem = currentRegion != null && visualizer != null ?
+                    visualizer.getCoordinateSystemName() : "МСК";
+                
+                String scaleDenominator = scaleComboBox != null && scaleComboBox.getValue() != null ?
+                    scaleComboBox.getValue() : "500";
+                
+                // Экспортировать
+                CanvasExporter.export(buildingCanvas, settings, coordinateSystem, scaleDenominator);
+                
+                // Показать уведомление
+                showInfo("Экспорт завершен", 
+                    "Ситуационный план сохранен:\n" + settings.getFile().getAbsolutePath());
+                
+                System.out.println("✅ Экспорт выполнен: " + settings.getFile().getName());
+            }
+        } catch (Exception e) {
+            showError("Ошибка экспорта", e.getMessage());
+            e.printStackTrace();
+        }
     }
     
     /**
@@ -894,9 +937,25 @@ public class LocationPlanTabController extends BaseTabController {
         alert.showAndWait();
     }
     
+    private void showWarning(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+    
     private void showInfo(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Информация");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+    
+    private void showInfo(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
