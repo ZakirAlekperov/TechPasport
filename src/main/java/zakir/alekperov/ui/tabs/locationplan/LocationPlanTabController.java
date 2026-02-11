@@ -335,10 +335,13 @@ public class LocationPlanTabController extends BaseTabController {
     
     private void saveBuildingToDatabase(AddBuildingDialogController.BuildingData buildingData) {
         try {
-            // Преобразование точек в DTO
-            List<CoordinatePointDTO> pointDTOs = new ArrayList<>();
+            // Преобразование точек в CoordinatePointData
+            List<AddBuildingCoordinatesCommand.CoordinatePointData> pointDatas = new ArrayList<>();
             for (AddBuildingDialogController.Point point : buildingData.getPoints()) {
-                pointDTOs.add(new CoordinatePointDTO(point.getX(), point.getY()));
+                pointDatas.add(new AddBuildingCoordinatesCommand.CoordinatePointData(
+                    String.valueOf(point.getX()),
+                    String.valueOf(point.getY())
+                ));
             }
             
             // Создание команды
@@ -346,7 +349,7 @@ public class LocationPlanTabController extends BaseTabController {
                 currentPassportId,
                 buildingData.getLitera(),
                 buildingData.getDescription(),
-                pointDTOs
+                pointDatas
             );
             
             // Выполнение команды
