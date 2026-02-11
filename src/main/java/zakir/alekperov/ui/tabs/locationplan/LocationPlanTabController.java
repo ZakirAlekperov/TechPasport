@@ -28,7 +28,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Контроллер вкладки "Ситуационный план" с поддержкой реальных геодезических координат МСК-67.
+ * Контроллер вкладки "Ситуационный план" с поддержкой реальных геодезических координат МСК.
+ * Автоматически определяет систему координат по субъекту РФ из первой вкладки.
  */
 public class LocationPlanTabController extends BaseTabController {
     
@@ -67,6 +68,7 @@ public class LocationPlanTabController extends BaseTabController {
     @FXML private Label measurementInfoLabel;
     
     private String currentPassportId;
+    private String currentRegion;  // Субъект РФ из первой вкладки
     private List<LocationPlanDTO.BuildingCoordinatesDTO> currentBuildings = new ArrayList<>();
     private BuildingVisualizer visualizer;
     
@@ -98,6 +100,21 @@ public class LocationPlanTabController extends BaseTabController {
         this.deleteBuildingUseCase = deleteBuildingUseCase;
     }
     
+    /**
+     * НОВЫЙ МЕТОД: Установить регион (субъект РФ) для автоматического определения системы координат.
+     * Вызывается из первой вкладки при изменении поля "Субъект".
+     * 
+     * @param regionName Название субъекта РФ (например, "Смоленская область")
+     */
+    public void setRegion(String regionName) {
+        this.currentRegion = regionName;
+        if (visualizer != null && regionName != null && !regionName.isBlank()) {
+            visualizer.setRegion(regionName);
+            updateVisualization();
+            System.out.println("🌍 Регион обновлен: " + regionName);
+        }
+    }
+    
     @Override
     protected void setupBindings() {
         if (scaleComboBox != null) {
@@ -127,6 +144,12 @@ public class LocationPlanTabController extends BaseTabController {
         
         if (buildingCanvas != null && canvasContainer != null) {
             visualizer = new BuildingVisualizer(buildingCanvas);
+            
+            // Если регион уже был установлен до инициализации visualizer
+            if (currentRegion != null && !currentRegion.isBlank()) {
+                visualizer.setRegion(currentRegion);
+            }
+            
             setupCanvasResize();
             setupCanvasInteraction();
         }
@@ -824,7 +847,11 @@ public class LocationPlanTabController extends BaseTabController {
             info.append(String.format("Площадь: %.2f м²\n\n", measurements.area));
         }
         
-        info.append("Координаты (МСК-67):\n");
+        // Отображаем название системы координат
+        String coordinateSystemName = currentRegion != null ? 
+            ("Координаты (" + (visualizer != null && visualizer.getOriginX() != 0 ? "МСК" : "МСК") + "):" +
+            "\n") : "Координаты:\n";
+        info.append(coordinateSystemName);
         
         int i = 1;
         for (var point : item.getBuilding().points()) {
