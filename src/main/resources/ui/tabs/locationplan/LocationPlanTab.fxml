@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.image.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            prefHeight="600.0" prefWidth="900.0"
+            stylesheets="@/ui/styles/app.css">
+
+    <padding>
+        <Insets top="15" right="15" bottom="15" left="15"/>
+    </padding>
+
+    <!-- Заголовок -->
+    <top>
+        <VBox spacing="10">
+            <Label text="4. Ситуационный план" styleClass="section-title"/>
+            <Separator/>
+        </VBox>
+    </top>
+
+    <!-- Основное содержимое -->
+    <center>
+        <SplitPane dividerPositions="0.5" orientation="HORIZONTAL">
+            
+            <!-- Левая панель - данные плана -->
+            <VBox spacing="15" style="-fx-padding: 10;">
+                <Label text="Параметры плана" styleClass="subsection-title"/>
+                
+                <!-- Масштаб -->
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="Масштаб:" prefWidth="120"/>
+                    <ComboBox fx:id="scaleComboBox" prefWidth="150"/>
+                </HBox>
+                
+                <!-- Дата создания -->
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="Дата создания:" prefWidth="120"/>
+                    <DatePicker fx:id="creationDatePicker" prefWidth="150"/>
+                </HBox>
+                
+                <!-- Исполнитель -->
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="Исполнитель:" prefWidth="120"/>
+                    <TextField fx:id="authorField" prefWidth="200" promptText="ФИО исполнителя"/>
+                </HBox>
+                
+                <Separator/>
+                
+                <!-- Изображение плана -->
+                <VBox spacing="10">
+                    <Label text="Изображение плана" styleClass="subsection-title"/>
+                    
+                    <StackPane prefHeight="250" style="-fx-border-color: #cccccc; -fx-border-width: 1; -fx-background-color: #f9f9f9;">
+                        <ImageView fx:id="planImageView" 
+                                   fitWidth="280" 
+                                   fitHeight="240" 
+                                   preserveRatio="true"/>
+                        <Label fx:id="placeholderLabel" 
+                               text="Нет изображения\nНажмите 'Загрузить' для выбора файла" 
+                               style="-fx-text-fill: #999999; -fx-text-alignment: center;"/>
+                    </StackPane>
+                    
+                    <Label fx:id="imageInfoLabel" 
+                           text="Изображение не загружено" 
+                           style="-fx-font-size: 11px; -fx-text-fill: #666666;"/>
+                    
+                    <HBox spacing="10">
+                        <Button fx:id="loadImageButton" text="Загрузить..." onAction="#handleLoadImage"/>
+                        <Button fx:id="removeImageButton" text="Удалить" onAction="#handleRemoveImage" disable="true"/>
+                    </HBox>
+                </VBox>
+                
+                <Separator/>
+                
+                <!-- Примечания -->
+                <VBox spacing="5" VBox.vgrow="ALWAYS">
+                    <Label text="Примечания:"/>
+                    <TextArea fx:id="notesArea" 
+                             promptText="Дополнительные примечания к ситуационному плану"
+                             wrapText="true"
+                             prefRowCount="4"
+                             VBox.vgrow="ALWAYS"/>
+                </VBox>
+            </VBox>
+            
+            <!-- Правая панель - координаты зданий -->
+            <VBox spacing="15" style="-fx-padding: 10;">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="Координаты зданий" styleClass="subsection-title" HBox.hgrow="ALWAYS"/>
+                    <Button fx:id="addCoordinatesButton" 
+                            text="+ Добавить здание" 
+                            onAction="#handleAddCoordinates"
+                            style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
+                </HBox>
+                
+                <!-- Список зданий -->
+                <ListView fx:id="buildingsListView" 
+                         VBox.vgrow="ALWAYS"
+                         style="-fx-border-color: #cccccc; -fx-border-width: 1;"/>
+                
+                <HBox spacing="10">
+                    <Label text="Всего зданий:" style="-fx-font-weight: bold;"/>
+                    <Label text="0" style="-fx-text-fill: #2196F3; -fx-font-weight: bold;"/>
+                </HBox>
+                
+                <VBox spacing="5" style="-fx-padding: 10; -fx-background-color: #e3f2fd; -fx-border-radius: 5; -fx-background-radius: 5;">
+                    <Label text="ℹ️ Информация" style="-fx-font-weight: bold;"/>
+                    <Label text="• Масштаб указывается в формате 1:500" wrapText="true"/>
+                    <Label text="• Координаты зданий указываются относительно границ участка" wrapText="true"/>
+                    <Label text="• Минимум 3 точки для каждого здания" wrapText="true"/>
+                </VBox>
+            </VBox>
+            
+        </SplitPane>
+    </center>
+
+    <!-- Нижняя панель - кнопки -->
+    <bottom>
+        <VBox spacing="10">
+            <Separator/>
+            <HBox spacing="10" alignment="CENTER_RIGHT">
+                <Button fx:id="saveButton" 
+                        text="💾 Сохранить" 
+                        onAction="#handleSave" 
+                        styleClass="primary-button"
+                        prefWidth="120"/>
+                <Button fx:id="clearButton" 
+                        text="🗑️ Очистить" 
+                        onAction="#handleClear"
+                        prefWidth="120"/>
+            </HBox>
+        </VBox>
+    </bottom>
+
+</BorderPane>
