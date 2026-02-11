@@ -6,6 +6,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import zakir.alekperov.ui.MainWindowController;
+import zakir.alekperov.ui.tabs.locationplan.LocationPlanTabController;
 
 /**
  * Точка входа в приложение.
@@ -52,9 +53,17 @@ public class ApplicationLauncher extends Application {
             public Object call(Class<?> controllerClass) {
                 System.out.println("🏭 FXMLControllerFactory: запрошен контроллер " + controllerClass.getSimpleName());
                 
-                // Возвращаем контроллеры из DI контейнера
-                if (controllerClass.getSimpleName().equals("LocationPlanTabController")) {
-                    return dependencyContainer.getLocationPlanTabController();
+                // Возвращаем контроллеры с зависимостями из DI контейнера
+                if (controllerClass == LocationPlanTabController.class) {
+                    // Создаем через пустой конструктор и инициализируем зависимости
+                    LocationPlanTabController controller = new LocationPlanTabController();
+                    controller.setDependencies(
+                        dependencyContainer.getLocationPlanTabController().saveLocationPlanUseCase,
+                        dependencyContainer.getLocationPlanTabController().loadLocationPlanUseCase,
+                        dependencyContainer.getLocationPlanTabController().addBuildingCoordinatesUseCase
+                    );
+                    System.out.println("✓ LocationPlanTabController создан с зависимостями из DI");
+                    return controller;
                 }
                 
                 // Для остальных контроллеров пытаемся создать через пустой конструктор
