@@ -56,6 +56,32 @@
                       promptText="Выберите шаг"/>
 
             <Separator/>
+            
+            <!-- ИНСТРУМЕНТ ИЗМЕРЕНИЯ -->
+            <Label text="📏 Инструмент измерения" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #FF5722;"/>
+            
+            <!-- Включение измерения -->
+            <CheckBox fx:id="measurementActiveCheckBox" text="Активировать измерение" selected="false" 
+                      onAction="#handleMeasurementActiveChange"
+                      style="-fx-font-size: 12px;"/>
+            
+            <!-- Режим измерения -->
+            <Label text="Режим измерения:" style="-fx-font-size: 12px;"/>
+            <ComboBox fx:id="measurementModeComboBox" prefWidth="Infinity" 
+                      onAction="#handleMeasurementModeChange"
+                      promptText="Выберите режим"/>
+            
+            <!-- Кнопка очистки измерений -->
+            <Button fx:id="clearMeasurementButton" text="🗑️ Очистить измерение" 
+                    onAction="#handleClearMeasurement"
+                    prefWidth="Infinity"
+                    style="-fx-font-size: 11px; -fx-background-color: #FF9800; -fx-text-fill: white;"/>
+            
+            <!-- Информация об измерении -->
+            <Label fx:id="measurementInfoLabel" text="" wrapText="true"
+                   style="-fx-font-size: 11px; -fx-text-fill: #666; -fx-padding: 5;"/>
+
+            <Separator/>
 
             <!-- Кнопки сохранения -->
             <HBox spacing="10">
@@ -127,6 +153,10 @@
                         <Label text="●" style="-fx-text-fill: #4CAF50; -fx-font-size: 16px;"/>
                         <Label text="Выбрано" style="-fx-font-size: 10px;"/>
                     </HBox>
+                    <HBox spacing="5" alignment="CENTER_LEFT">
+                        <Label text="●" style="-fx-text-fill: #FF5722; -fx-font-size: 16px;"/>
+                        <Label text="Измерение" style="-fx-font-size: 10px;"/>
+                    </HBox>
                     
                     <!-- Прокладка -->
                     <Region HBox.hgrow="ALWAYS"/>
@@ -137,6 +167,8 @@
                                style="-fx-font-size: 9px; -fx-text-fill: #666;"/>
                         <Label text="✏️ Alt+ЛКМ - перетаскивание точки | 🖱️ Клик - выбор" 
                                style="-fx-font-size: 9px; -fx-text-fill: #666;"/>
+                        <Label text="📏 Режим измерения: клик для добавления точек" 
+                               style="-fx-font-size: 9px; -fx-text-fill: #FF5722;"/>
                     </VBox>
                 </HBox>
             </VBox>
