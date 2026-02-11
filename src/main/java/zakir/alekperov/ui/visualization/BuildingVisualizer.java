@@ -10,7 +10,7 @@ import zakir.alekperov.application.locationplan.LocationPlanDTO;
 import java.util.List;
 
 /**
- * Класс для визуализации зданий на Canvas с поддержкой выделения и hover.
+ * Класс для визуализации зданий на Canvas с поддержкой выделения, hover и редактирования точек.
  */
 public class BuildingVisualizer {
     
@@ -28,11 +28,16 @@ public class BuildingVisualizer {
     private static final Color SELECTED_STROKE_COLOR = Color.rgb(76, 175, 80);
     private static final Color SELECTED_FILL_COLOR = Color.rgb(76, 175, 80, 0.3);
     private static final Color POINT_COLOR = Color.rgb(255, 87, 34);
+    private static final Color POINT_HOVER_COLOR = Color.rgb(255, 193, 7);
+    private static final Color POINT_DRAG_COLOR = Color.rgb(33, 150, 243);
     private static final Color TEXT_COLOR = Color.rgb(33, 33, 33);
     
     // Параметры отрисовки
     private static final double PADDING = 40.0;
     private static final double POINT_RADIUS = 4.0;
+    private static final double POINT_HOVER_RADIUS = 6.0;
+    private static final double POINT_DRAG_RADIUS = 8.0;
+    private static final double POINT_CLICK_THRESHOLD = 15.0; // пиксели в canvas
     private static final double BUILDING_STROKE_WIDTH = 2.0;
     private static final double HOVER_STROKE_WIDTH = 3.0;
     private static final double SELECTED_STROKE_WIDTH = 3.5;
@@ -40,6 +45,10 @@ public class BuildingVisualizer {
     // Состояние выделения
     private String selectedBuildingLitera = null;
     private String hoveredBuildingLitera = null;
+    
+    // Состояние редактирования точек
+    private PointHandle hoveredPoint = null;
+    private PointHandle draggingPoint = null;
     
     public BuildingVisualizer(Canvas canvas) {
         this.canvas = canvas;
@@ -51,52 +60,139 @@ public class BuildingVisualizer {
         return transform;
     }
     
-    /**
-     * Установить выделенное здание.
-     */
     public void setSelectedBuilding(String litera) {
         this.selectedBuildingLitera = litera;
     }
     
-    /**
-     * Получить литеру выделенного здания.
-     */
     public String getSelectedBuilding() {
         return selectedBuildingLitera;
     }
     
-    /**
-     * Снять выделение.
-     */
     public void clearSelection() {
         this.selectedBuildingLitera = null;
     }
     
-    /**
-     * Установить здание под курсором (hover).
-     */
     public void setHoveredBuilding(String litera) {
         this.hoveredBuildingLitera = litera;
     }
     
     /**
-     * Найти здание в точке (в координатах Canvas).
-     * @param canvasX X координата в Canvas
-     * @param canvasY Y координата в Canvas
-     * @param buildings Список зданий
-     * @return Литера найденного здания или null
+     * Установить точку под курсором (hover).
      */
+    public void setHoveredPoint(PointHandle point) {
+        this.hoveredPoint = point;
+    }
+    
+    /**
+     * Получить точку под курсором.
+     */
+    public PointHandle getHoveredPoint() {
+        return hoveredPoint;
+    }
+    
+    /**
+     * Начать перетаскивание точки.
+     */
+    public void startDraggingPoint(PointHandle point) {
+        this.draggingPoint = point;
+    }
+    
+    /**
+     * Завершить перетаскивание точки.
+     */
+    public PointHandle stopDraggingPoint() {
+        PointHandle point = this.draggingPoint;
+        this.draggingPoint = null;
+        return point;
+    }
+    
+    /**
+     * Получить перетаскиваемую точку.
+     */
+    public PointHandle getDraggingPoint() {
+        return draggingPoint;
+    }
+    
+    /**
+     * Проверить, перетаскивается ли точка.
+     */
+    public boolean isDraggingPoint() {
+        return draggingPoint != null;
+    }
+    
+    /**
+     * Обновить позицию перетаскиваемой точки.
+     */
+    public void updateDraggingPoint(double canvasX, double canvasY) {
+        if (draggingPoint != null) {
+            double[] worldCoords = transform.canvasToWorld(canvasX, canvasY);
+            draggingPoint.worldX = worldCoords[0];
+            draggingPoint.worldY = worldCoords[1];
+        }
+    }
+    
+    /**
+     * Найти точку рядом с указанными координатами canvas.
+     */
+    public PointHandle findPointAt(double canvasX, double canvasY, List<LocationPlanDTO.BuildingCoordinatesDTO> buildings) {
+        if (buildings == null || buildings.isEmpty()) {
+            return null;
+        }
+        
+        // Искать только в выбранном здании
+        if (selectedBuildingLitera == null) {
+            return null;
+        }
+        
+        LocationPlanDTO.BuildingCoordinatesDTO selectedBuilding = null;
+        for (LocationPlanDTO.BuildingCoordinatesDTO building : buildings) {
+            if (building.litera().equals(selectedBuildingLitera)) {
+                selectedBuilding = building;
+                break;
+            }
+        }
+        
+        if (selectedBuilding == null) {
+            return null;
+        }
+        
+        // Найти ближайшую точку
+        List<LocationPlanDTO.CoordinatePointDTO> points = selectedBuilding.points();
+        double minDistance = Double.MAX_VALUE;
+        PointHandle closestPoint = null;
+        
+        for (int i = 0; i < points.size(); i++) {
+            try {
+                double worldX = Double.parseDouble(points.get(i).x());
+                double worldY = Double.parseDouble(points.get(i).y());
+                
+                double[] canvasCoords = transform.worldToCanvas(worldX, worldY);
+                double distance = Math.sqrt(
+                    Math.pow(canvasCoords[0] - canvasX, 2) + 
+                    Math.pow(canvasCoords[1] - canvasY, 2)
+                );
+                
+                if (distance < POINT_CLICK_THRESHOLD && distance < minDistance) {
+                    minDistance = distance;
+                    closestPoint = new PointHandle(selectedBuildingLitera, i, worldX, worldY);
+                }
+            } catch (NumberFormatException e) {
+                // Пропустить
+            }
+        }
+        
+        return closestPoint;
+    }
+    
     public String findBuildingAt(double canvasX, double canvasY, List<LocationPlanDTO.BuildingCoordinatesDTO> buildings) {
         if (buildings == null || buildings.isEmpty()) {
             return null;
         }
         
-        // Преобразовать координаты Canvas в мировые
         double[] worldCoords = transform.canvasToWorld(canvasX, canvasY);
         double worldX = worldCoords[0];
         double worldY = worldCoords[1];
         
-        // Проверить каждое здание (в обратном порядке, чтобы найти верхнее)
         for (int i = buildings.size() - 1; i >= 0; i--) {
             LocationPlanDTO.BuildingCoordinatesDTO building = buildings.get(i);
             if (isPointInBuilding(worldX, worldY, building)) {
@@ -107,9 +203,6 @@ public class BuildingVisualizer {
         return null;
     }
     
-    /**
-     * Проверить, находится ли точка внутри здания (Ray casting algorithm).
-     */
     private boolean isPointInBuilding(double x, double y, LocationPlanDTO.BuildingCoordinatesDTO building) {
         List<LocationPlanDTO.CoordinatePointDTO> points = building.points();
         if (points.size() < 3) {
@@ -144,9 +237,6 @@ public class BuildingVisualizer {
         }
     }
     
-    /**
-     * Отрисовать все здания.
-     */
     public void draw(List<LocationPlanDTO.BuildingCoordinatesDTO> buildings) {
         clearCanvas();
         
@@ -159,7 +249,6 @@ public class BuildingVisualizer {
             return;
         }
         
-        // Если трансформация в начальном состоянии, подогнать под границы
         if (transform.getScale() == 1.0 && transform.getTranslateX() == 0.0 && transform.getTranslateY() == 0.0) {
             transform.fitBounds(
                 canvas.getWidth(), 
@@ -186,7 +275,7 @@ public class BuildingVisualizer {
         }
         
         // Затем здание под курсором
-        if (hoveredBuildingLitera != null) {
+        if (hoveredBuildingLitera != null && !hoveredBuildingLitera.equals(selectedBuildingLitera)) {
             for (LocationPlanDTO.BuildingCoordinatesDTO building : buildings) {
                 if (building.litera().equals(hoveredBuildingLitera)) {
                     drawBuilding(building, BuildingState.HOVERED);
@@ -258,9 +347,6 @@ public class BuildingVisualizer {
         }
     }
     
-    /**
-     * Отрисовать здание с учётом его состояния.
-     */
     private void drawBuilding(LocationPlanDTO.BuildingCoordinatesDTO building, BuildingState state) {
         List<LocationPlanDTO.CoordinatePointDTO> points = building.points();
         
@@ -273,8 +359,16 @@ public class BuildingVisualizer {
         
         for (int i = 0; i < points.size(); i++) {
             try {
-                xPoints[i] = Double.parseDouble(points.get(i).x());
-                yPoints[i] = Double.parseDouble(points.get(i).y());
+                // Если точка перетаскивается, использовать новые координаты
+                if (draggingPoint != null && 
+                    draggingPoint.buildingLitera.equals(building.litera()) && 
+                    draggingPoint.pointIndex == i) {
+                    xPoints[i] = draggingPoint.worldX;
+                    yPoints[i] = draggingPoint.worldY;
+                } else {
+                    xPoints[i] = Double.parseDouble(points.get(i).x());
+                    yPoints[i] = Double.parseDouble(points.get(i).y());
+                }
             } catch (NumberFormatException e) {
                 return;
             }
@@ -311,9 +405,26 @@ public class BuildingVisualizer {
         gc.strokePolygon(xPoints, yPoints, points.size());
         
         // Отрисовать точки
-        gc.setFill(POINT_COLOR);
-        double pointRadius = POINT_RADIUS / transform.getScale();
         for (int i = 0; i < xPoints.length; i++) {
+            Color pointColor = POINT_COLOR;
+            double pointRadius = POINT_RADIUS / transform.getScale();
+            
+            // Проверить, это перетаскиваемая точка?
+            if (draggingPoint != null && 
+                draggingPoint.buildingLitera.equals(building.litera()) && 
+                draggingPoint.pointIndex == i) {
+                pointColor = POINT_DRAG_COLOR;
+                pointRadius = POINT_DRAG_RADIUS / transform.getScale();
+            }
+            // Или это точка под курсором?
+            else if (hoveredPoint != null && 
+                     hoveredPoint.buildingLitera.equals(building.litera()) && 
+                     hoveredPoint.pointIndex == i) {
+                pointColor = POINT_HOVER_COLOR;
+                pointRadius = POINT_HOVER_RADIUS / transform.getScale();
+            }
+            
+            gc.setFill(pointColor);
             gc.fillOval(
                 xPoints[i] - pointRadius, 
                 yPoints[i] - pointRadius, 
@@ -355,9 +466,6 @@ public class BuildingVisualizer {
         return calculateBounds(buildings);
     }
     
-    /**
-     * Состояние здания для отрисовки.
-     */
     private enum BuildingState {
         NORMAL,
         HOVERED,
@@ -375,6 +483,23 @@ public class BuildingVisualizer {
             this.maxX = maxX;
             this.minY = minY;
             this.maxY = maxY;
+        }
+    }
+    
+    /**
+     * Дескриптор точки для редактирования.
+     */
+    public static class PointHandle {
+        public final String buildingLitera;
+        public final int pointIndex;
+        public double worldX;
+        public double worldY;
+        
+        public PointHandle(String buildingLitera, int pointIndex, double worldX, double worldY) {
+            this.buildingLitera = buildingLitera;
+            this.pointIndex = pointIndex;
+            this.worldX = worldX;
+            this.worldY = worldY;
         }
     }
 }
