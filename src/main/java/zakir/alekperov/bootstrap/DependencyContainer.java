@@ -123,4 +123,18 @@ public final class DependencyContainer {
     public DatabaseConnection getDatabaseConnection() {
         return databaseConnection;
     }
+    
+    // Геттеры для use cases
+    
+    public SaveLocationPlanUseCase getSaveLocationPlanUseCase() {
+        return saveLocationPlanUseCase;
+    }
+    
+    public LoadLocationPlanUseCase getLoadLocationPlanUseCase() {
+        return loadLocationPlanUseCase;
+    }
+    
+    public AddBuildingCoordinatesUseCase getAddBuildingCoordinatesUseCase() {
+        return addBuildingCoordinatesUseCase;
+    }
 }
