@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Контроллер вкладки "Ситуационный план" с адаптивным Canvas.
+ * Контроллер вкладки "Ситуационный план" с координатной сеткой и интерактивностью.
  */
 public class LocationPlanTabController extends BaseTabController {
     
@@ -54,6 +54,10 @@ public class LocationPlanTabController extends BaseTabController {
     @FXML private Button zoomResetButton;
     
     @FXML private Label selectedBuildingLabel;
+    
+    // Элементы управления сеткой
+    @FXML private CheckBox gridVisibleCheckBox;
+    @FXML private ComboBox<String> gridSizeComboBox;
     
     private String currentPassportId;
     private List<LocationPlanDTO.BuildingCoordinatesDTO> currentBuildings = new ArrayList<>();
@@ -94,6 +98,12 @@ public class LocationPlanTabController extends BaseTabController {
             scaleComboBox.setValue("500");
         }
         
+        // Инициализация элементов управления сеткой
+        if (gridSizeComboBox != null) {
+            gridSizeComboBox.getItems().addAll("1", "2", "5", "10", "25", "50");
+            gridSizeComboBox.setValue("10");
+        }
+        
         if (buildingsListView != null) {
             buildingsListView.setCellFactory(param -> new BuildingListCell());
         }
@@ -110,15 +120,12 @@ public class LocationPlanTabController extends BaseTabController {
      * Canvas НЕ участвует в расчете размера layout.
      */
     private void setupCanvasResize() {
-        // Отключаем участие Canvas в layout calculations
         buildingCanvas.setManaged(false);
         
-        // Слушаем изменения контейнера и синхронизируем Canvas
         canvasContainer.layoutBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
             double width = newBounds.getWidth();
             double height = newBounds.getHeight();
             
-            // Устанавливаем размер Canvas равным контейнеру
             if (width > 0 && height > 0) {
                 buildingCanvas.setWidth(width);
                 buildingCanvas.setHeight(height);
@@ -131,7 +138,6 @@ public class LocationPlanTabController extends BaseTabController {
      * Настроить интерактивность Canvas: zoom, pan, selection, point editing.
      */
     private void setupCanvasInteraction() {
-        // Zoom колесом мыши
         buildingCanvas.setOnScroll((ScrollEvent event) -> {
             if (visualizer != null) {
                 visualizer.getTransform().zoomByScroll(event.getX(), event.getY(), event.getDeltaY());
@@ -140,11 +146,9 @@ public class LocationPlanTabController extends BaseTabController {
             }
         });
         
-        // Hover - подсветка при наведении (здания или точки)
         buildingCanvas.setOnMouseMoved(event -> {
             if (visualizer == null || isPanning) return;
             
-            // Сначала проверить, наведена ли точка
             BuildingVisualizer.PointHandle point = visualizer.findPointAt(event.getX(), event.getY(), currentBuildings);
             visualizer.setHoveredPoint(point);
             
@@ -159,7 +163,6 @@ public class LocationPlanTabController extends BaseTabController {
             updateVisualization();
         });
         
-        // Клик - выделение здания
         buildingCanvas.setOnMouseClicked(event -> {
             if (event.getButton() == MouseButton.PRIMARY && !event.isControlDown() && visualizer != null) {
                 String clickedLitera = visualizer.findBuildingAt(event.getX(), event.getY(), currentBuildings);
@@ -182,11 +185,9 @@ public class LocationPlanTabController extends BaseTabController {
             }
         });
         
-        // Mouse pressed - начало pan или перетаскивания точки
         buildingCanvas.setOnMousePressed(event -> {
             if (visualizer == null) return;
             
-            // Pan средней кнопкой или Ctrl+левая
             if (event.getButton() == MouseButton.MIDDLE || 
                 (event.getButton() == MouseButton.PRIMARY && event.isControlDown())) {
                 isPanning = true;
@@ -197,7 +198,6 @@ public class LocationPlanTabController extends BaseTabController {
                 return;
             }
             
-            // Перетаскивание точки левой кнопкой (Alt+ЛКМ)
             if (event.getButton() == MouseButton.PRIMARY && event.isAltDown()) {
                 BuildingVisualizer.PointHandle point = visualizer.findPointAt(event.getX(), event.getY(), currentBuildings);
                 if (point != null) {
@@ -208,11 +208,9 @@ public class LocationPlanTabController extends BaseTabController {
             }
         });
         
-        // Mouse dragged - перемещение Canvas или точки
         buildingCanvas.setOnMouseDragged(event -> {
             if (visualizer == null) return;
             
-            // Pan
             if (isPanning) {
                 double dx = event.getX() - lastMouseX;
                 double dy = event.getY() - lastMouseY;
@@ -224,7 +222,6 @@ public class LocationPlanTabController extends BaseTabController {
                 return;
             }
             
-            // Перетаскивание точки
             if (visualizer.isDraggingPoint()) {
                 visualizer.updateDraggingPoint(event.getX(), event.getY());
                 updateVisualization();
@@ -232,7 +229,6 @@ public class LocationPlanTabController extends BaseTabController {
             }
         });
         
-        // Mouse released - завершение pan или сохранение точки
         buildingCanvas.setOnMouseReleased(event -> {
             if (visualizer == null) return;
             
@@ -243,7 +239,6 @@ public class LocationPlanTabController extends BaseTabController {
                 return;
             }
             
-            // Сохранить новые координаты точки
             if (visualizer.isDraggingPoint()) {
                 BuildingVisualizer.PointHandle point = visualizer.stopDraggingPoint();
                 if (point != null) {
@@ -254,7 +249,6 @@ public class LocationPlanTabController extends BaseTabController {
             }
         });
         
-        // Mouse exited - очистить hover
         buildingCanvas.setOnMouseExited(event -> {
             if (visualizer != null) {
                 visualizer.setHoveredBuilding(null);
@@ -263,6 +257,35 @@ public class LocationPlanTabController extends BaseTabController {
                 updateVisualization();
             }
         });
+    }
+    
+    /**
+     * Обработчик изменения видимости сетки.
+     */
+    @FXML
+    private void handleGridVisibilityChange() {
+        if (visualizer != null && gridVisibleCheckBox != null) {
+            visualizer.setGridVisible(gridVisibleCheckBox.isSelected());
+            updateVisualization();
+            System.out.println("📐 Сетка: " + (gridVisibleCheckBox.isSelected() ? "ВКЛ" : "ВЫКЛ"));
+        }
+    }
+    
+    /**
+     * Обработчик изменения шага сетки.
+     */
+    @FXML
+    private void handleGridSizeChange() {
+        if (visualizer != null && gridSizeComboBox != null && gridSizeComboBox.getValue() != null) {
+            try {
+                double newSize = Double.parseDouble(gridSizeComboBox.getValue());
+                visualizer.setGridSize(newSize);
+                updateVisualization();
+                System.out.println("📐 Шаг сетки изменен: " + newSize + "м");
+            } catch (NumberFormatException e) {
+                System.err.println("⚠️ Некорректное значение шага сетки");
+            }
+        }
     }
     
     /**
