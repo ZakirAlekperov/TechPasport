@@ -7,10 +7,12 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import zakir.alekperov.application.locationplan.LocationPlanDTO;
 
+import java.text.DecimalFormat;
 import java.util.List;
 
 /**
- * Класс для визуализации зданий с инструментом измерения.
+ * Класс для визуализации зданий с поддержкой реальных геодезических координат (МСК-67).
+ * Автоматически вычисляет локальное смещение для корректного отображения.
  */
 public class BuildingVisualizer {
     
@@ -18,6 +20,11 @@ public class BuildingVisualizer {
     private final GraphicsContext gc;
     private final CanvasTransform transform;
     private final MeasurementTool measurementTool;
+    private final DecimalFormat coordinateFormat = new DecimalFormat("#,##0.00");
+    
+    // Локальное смещение для работы с большими координатами
+    private double originX = 0.0;
+    private double originY = 0.0;
     
     // Цвета
     private static final Color BACKGROUND_COLOR = Color.rgb(250, 250, 250);
@@ -134,8 +141,9 @@ public class BuildingVisualizer {
     public void updateDraggingPoint(double canvasX, double canvasY) {
         if (draggingPoint != null) {
             double[] worldCoords = transform.canvasToWorld(canvasX, canvasY);
-            draggingPoint.worldX = worldCoords[0];
-            draggingPoint.worldY = worldCoords[1];
+            // Добавляем смещение origin для получения реальных координат
+            draggingPoint.worldX = worldCoords[0] + originX;
+            draggingPoint.worldY = worldCoords[1] + originY;
         }
     }
     
@@ -169,7 +177,11 @@ public class BuildingVisualizer {
                 double worldX = Double.parseDouble(points.get(i).x());
                 double worldY = Double.parseDouble(points.get(i).y());
                 
-                double[] canvasCoords = transform.worldToCanvas(worldX, worldY);
+                // Преобразуем реальные координаты в локальные
+                double localX = worldX - originX;
+                double localY = worldY - originY;
+                
+                double[] canvasCoords = transform.worldToCanvas(localX, localY);
                 double distance = Math.sqrt(
                     Math.pow(canvasCoords[0] - canvasX, 2) + 
                     Math.pow(canvasCoords[1] - canvasY, 2)
@@ -193,8 +205,9 @@ public class BuildingVisualizer {
         }
         
         double[] worldCoords = transform.canvasToWorld(canvasX, canvasY);
-        double worldX = worldCoords[0];
-        double worldY = worldCoords[1];
+        // Добавляем смещение для получения реальных координат
+        double worldX = worldCoords[0] + originX;
+        double worldY = worldCoords[1] + originY;
         
         for (int i = buildings.size() - 1; i >= 0; i--) {
             LocationPlanDTO.BuildingCoordinatesDTO building = buildings.get(i);
@@ -252,14 +265,21 @@ public class BuildingVisualizer {
             return;
         }
         
+        // Вычисляем локальное смещение (origin) для работы с большими координатами
+        originX = bounds.minX;
+        originY = bounds.minY;
+        
+        // Создаем локальные границы (относительно origin)
+        double localWidth = bounds.maxX - bounds.minX;
+        double localHeight = bounds.maxY - bounds.minY;
+        
         if (transform.getScale() == 1.0 && transform.getTranslateX() == 0.0 && transform.getTranslateY() == 0.0) {
             transform.fitBounds(
                 canvas.getWidth(), 
                 canvas.getHeight(), 
-                bounds.minX, 
-                bounds.minY, 
-                bounds.maxX, 
-                bounds.maxY, 
+                0, 0,  // Локальные координаты начинаются с 0
+                localWidth, 
+                localHeight, 
                 PADDING
             );
         }
@@ -339,36 +359,50 @@ public class BuildingVisualizer {
     }
     
     private void drawGrid(Bounds bounds) {
-        double startX = Math.floor(bounds.minX / gridSize) * gridSize;
-        double endX = Math.ceil(bounds.maxX / gridSize) * gridSize;
-        double startY = Math.floor(bounds.minY / gridSize) * gridSize;
-        double endY = Math.ceil(bounds.maxY / gridSize) * gridSize;
+        // Работаем в локальных координатах (относительно origin)
+        double localMinX = 0;
+        double localMaxX = bounds.maxX - bounds.minX;
+        double localMinY = 0;
+        double localMaxY = bounds.maxY - bounds.minY;
+        
+        double startX = Math.floor(localMinX / gridSize) * gridSize;
+        double endX = Math.ceil(localMaxX / gridSize) * gridSize;
+        double startY = Math.floor(localMinY / gridSize) * gridSize;
+        double endY = Math.ceil(localMaxY / gridSize) * gridSize;
         
         double fontSize = 8.0 / transform.getScale();
         gc.setFont(Font.font("System", FontWeight.NORMAL, fontSize));
         gc.setFill(GRID_TEXT_COLOR);
         
-        for (double x = startX; x <= endX; x += gridSize) {
-            boolean isMajor = (Math.abs(x) % (gridSize * 5) < 0.01);
+        // Вертикальные линии
+        for (double localX = startX; localX <= endX; localX += gridSize) {
+            boolean isMajor = (Math.abs(localX) % (gridSize * 5) < 0.01);
             
             gc.setStroke(isMajor ? GRID_MAJOR_COLOR : GRID_MINOR_COLOR);
             gc.setLineWidth((isMajor ? 1.0 : 0.5) / transform.getScale());
-            gc.strokeLine(x, startY, x, endY);
+            gc.strokeLine(localX, localMinY, localX, localMaxY);
             
             if (isMajor) {
-                gc.fillText(String.format("%.0f", x), x + 1 / transform.getScale(), startY + 10 / transform.getScale());
+                // Показываем РЕАЛЬНЫЕ координаты (с учетом origin)
+                double realX = localX + originX;
+                String label = coordinateFormat.format(realX);
+                gc.fillText(label, localX + 1 / transform.getScale(), localMinY + 10 / transform.getScale());
             }
         }
         
-        for (double y = startY; y <= endY; y += gridSize) {
-            boolean isMajor = (Math.abs(y) % (gridSize * 5) < 0.01);
+        // Горизонтальные линии
+        for (double localY = startY; localY <= endY; localY += gridSize) {
+            boolean isMajor = (Math.abs(localY) % (gridSize * 5) < 0.01);
             
             gc.setStroke(isMajor ? GRID_MAJOR_COLOR : GRID_MINOR_COLOR);
             gc.setLineWidth((isMajor ? 1.0 : 0.5) / transform.getScale());
-            gc.strokeLine(startX, y, endX, y);
+            gc.strokeLine(localMinX, localY, localMaxX, localY);
             
             if (isMajor) {
-                gc.fillText(String.format("%.0f", y), startX + 1 / transform.getScale(), y - 2 / transform.getScale());
+                // Показываем РЕАЛЬНЫЕ координаты (с учетом origin)
+                double realY = localY + originY;
+                String label = coordinateFormat.format(realY);
+                gc.fillText(label, localMinX + 1 / transform.getScale(), localY - 2 / transform.getScale());
             }
         }
     }
@@ -385,15 +419,21 @@ public class BuildingVisualizer {
         
         for (int i = 0; i < points.size(); i++) {
             try {
+                double realX, realY;
+                
                 if (draggingPoint != null && 
                     draggingPoint.buildingLitera.equals(building.litera()) && 
                     draggingPoint.pointIndex == i) {
-                    xPoints[i] = draggingPoint.worldX;
-                    yPoints[i] = draggingPoint.worldY;
+                    realX = draggingPoint.worldX;
+                    realY = draggingPoint.worldY;
                 } else {
-                    xPoints[i] = Double.parseDouble(points.get(i).x());
-                    yPoints[i] = Double.parseDouble(points.get(i).y());
+                    realX = Double.parseDouble(points.get(i).x());
+                    realY = Double.parseDouble(points.get(i).y());
                 }
+                
+                // Преобразуем в локальные координаты
+                xPoints[i] = realX - originX;
+                yPoints[i] = realY - originY;
             } catch (NumberFormatException e) {
                 return;
             }
@@ -472,8 +512,11 @@ public class BuildingVisualizer {
         gc.setFill(TEXT_COLOR);
         gc.setFont(Font.font("System", FontWeight.NORMAL, 10));
         
-        String boundsInfo = String.format("Диапазон: X[%.1f..%.1f], Y[%.1f..%.1f]", 
-                                         bounds.minX, bounds.maxX, bounds.minY, bounds.maxY);
+        String boundsInfo = String.format("МСК-67: X[%s..%s], Y[%s..%s]", 
+            coordinateFormat.format(bounds.minX),
+            coordinateFormat.format(bounds.maxX),
+            coordinateFormat.format(bounds.minY),
+            coordinateFormat.format(bounds.maxY));
         gc.fillText(boundsInfo, 10, canvas.getHeight() - 20);
         
         String zoomInfo = String.format("Масштаб: %s | Сетка: %s (шаг %.0fм) | Измерение: %s", 
@@ -511,8 +554,8 @@ public class BuildingVisualizer {
     public static class PointHandle {
         public final String buildingLitera;
         public final int pointIndex;
-        public double worldX;
-        public double worldY;
+        public double worldX;  // Реальные координаты МСК-67
+        public double worldY;  // Реальные координаты МСК-67
         
         public PointHandle(String buildingLitera, int pointIndex, double worldX, double worldY) {
             this.buildingLitera = buildingLitera;
