@@ -62,7 +62,11 @@ public class ApplicationLauncher extends Application {
                         dependencyContainer.getLoadLocationPlanUseCase(),
                         dependencyContainer.getAddBuildingCoordinatesUseCase()
                     );
-                    System.out.println("✓ LocationPlanTabController создан с зависимостями из DI");
+                    
+                    // Регистрируем контроллер в DI контейнере
+                    dependencyContainer.registerLocationPlanTabController(controller);
+                    
+                    System.out.println("✓ LocationPlanTabController создан и зарегистрирован в DI");
                     return controller;
                 }
                 
