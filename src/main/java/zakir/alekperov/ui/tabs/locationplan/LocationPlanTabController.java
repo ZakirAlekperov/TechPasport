@@ -335,7 +335,17 @@ public class LocationPlanTabController extends BaseTabController {
             
             controller.setDialogStage(dialogStage);
             
-            // TODO: Заполнить данными при редактировании
+            // Заполнить данными при редактировании
+            if (existingBuilding != null) {
+                List<AddBuildingDialogController.Point> points = new ArrayList<>();
+                for (var point : existingBuilding.points()) {
+                    points.add(new AddBuildingDialogController.Point(
+                        Double.parseDouble(point.x()),
+                        Double.parseDouble(point.y())
+                    ));
+                }
+                controller.setExistingBuilding(existingBuilding.litera(), existingBuilding.description(), points);
+            }
             
             dialogStage.showAndWait();
             
@@ -343,7 +353,13 @@ public class LocationPlanTabController extends BaseTabController {
                 AddBuildingDialogController.BuildingData buildingData = controller.getBuildingData();
                 
                 if (buildingData != null) {
-                    saveBuildingToDatabase(buildingData);
+                    if (controller.isEditMode()) {
+                        // Редактирование: удалить старое и добавить новое
+                        updateBuildingInDatabase(buildingData);
+                    } else {
+                        // Добавление нового
+                        saveBuildingToDatabase(buildingData);
+                    }
                 }
             }
             
@@ -379,6 +395,44 @@ public class LocationPlanTabController extends BaseTabController {
             showError("Ошибка валидации", e.getMessage());
         } catch (Exception e) {
             showError("Ошибка сохранения", "Не удалось сохранить здание: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    private void updateBuildingInDatabase(AddBuildingDialogController.BuildingData buildingData) {
+        try {
+            // Стратегия: удалить старое + добавить новое
+            DeleteBuildingCommand deleteCommand = new DeleteBuildingCommand(
+                currentPassportId,
+                buildingData.getLitera()
+            );
+            deleteBuildingUseCase.execute(deleteCommand);
+            
+            // Добавить обновленное здание
+            List<AddBuildingCoordinatesCommand.CoordinatePointData> pointDatas = new ArrayList<>();
+            for (AddBuildingDialogController.Point point : buildingData.getPoints()) {
+                pointDatas.add(new AddBuildingCoordinatesCommand.CoordinatePointData(
+                    String.valueOf(point.getX()),
+                    String.valueOf(point.getY())
+                ));
+            }
+            
+            AddBuildingCoordinatesCommand addCommand = new AddBuildingCoordinatesCommand(
+                currentPassportId,
+                buildingData.getLitera(),
+                buildingData.getDescription(),
+                pointDatas
+            );
+            
+            addBuildingCoordinatesUseCase.execute(addCommand);
+            loadLocationPlanData();
+            
+            showInfo("Здание успешно обновлено!");
+            
+        } catch (ValidationException e) {
+            showError("Ошибка валидации", e.getMessage());
+        } catch (Exception e) {
+            showError("Ошибка обновления", "Не удалось обновить здание: " + e.getMessage());
             e.printStackTrace();
         }
     }
