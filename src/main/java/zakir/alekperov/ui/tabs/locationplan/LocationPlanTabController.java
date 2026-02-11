@@ -344,8 +344,8 @@ public class LocationPlanTabController extends BaseTabController {
                 ExportDialog.ExportSettings settings = result.get();
                 
                 // Получить информацию о системе координат и масштабе
-                String coordinateSystem = currentRegion != null && visualizer != null ?
-                    visualizer.getCoordinateSystemName() : "МСК";
+                String coordinateSystem = currentRegion != null ? 
+                    "МСК-67 (" + currentRegion + ")" : "МСК-67";
                 
                 String scaleDenominator = scaleComboBox != null && scaleComboBox.getValue() != null ?
                     scaleComboBox.getValue() : "500";
@@ -892,8 +892,8 @@ public class LocationPlanTabController extends BaseTabController {
         
         // Отображаем название системы координат
         String coordinateSystemName = currentRegion != null ? 
-            ("Координаты (" + (visualizer != null && visualizer.getOriginX() != 0 ? "МСК" : "МСК") + "):" +
-            "\n") : "Координаты:\n";
+            ("Координаты (МСК-67, " + currentRegion + "):" +
+            "\n") : "Координаты (МСК-67):\n";
         info.append(coordinateSystemName);
         
         int i = 1;
