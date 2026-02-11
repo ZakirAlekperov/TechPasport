@@ -11,12 +11,13 @@ import java.util.List;
 
 /**
  * Класс для визуализации зданий на Canvas.
- * Отрисовывает контуры зданий, точки, литеры и сетку.
+ * Отрисовывает контуры зданий, точки, литеры и сетку с поддержкой zoom/pan.
  */
 public class BuildingVisualizer {
     
     private final Canvas canvas;
     private final GraphicsContext gc;
+    private final CanvasTransform transform;
     
     // Цвета
     private static final Color BACKGROUND_COLOR = Color.rgb(250, 250, 250);
@@ -34,6 +35,14 @@ public class BuildingVisualizer {
     public BuildingVisualizer(Canvas canvas) {
         this.canvas = canvas;
         this.gc = canvas.getGraphicsContext2D();
+        this.transform = new CanvasTransform();
+    }
+    
+    /**
+     * Получить объект управления трансформациями.
+     */
+    public CanvasTransform getTransform() {
+        return transform;
     }
     
     /**
@@ -54,19 +63,38 @@ public class BuildingVisualizer {
             return;
         }
         
-        // Рассчитать масштаб
-        double scale = calculateScale(bounds);
+        // Если трансформация в начальном состоянии, подогнать под границы
+        if (transform.getScale() == 1.0 && transform.getTranslateX() == 0.0 && transform.getTranslateY() == 0.0) {
+            transform.fitBounds(
+                canvas.getWidth(), 
+                canvas.getHeight(), 
+                bounds.minX, 
+                bounds.minY, 
+                bounds.maxX, 
+                bounds.maxY, 
+                PADDING
+            );
+        }
+        
+        // Сохранить состояние GraphicsContext
+        gc.save();
+        
+        // Применить трансформацию
+        transform.apply(gc);
         
         // Отрисовать сетку
-        drawGrid(bounds, scale);
+        drawGrid(bounds);
         
         // Отрисовать каждое здание
         for (LocationPlanDTO.BuildingCoordinatesDTO building : buildings) {
-            drawBuilding(building, bounds, scale);
+            drawBuilding(building);
         }
         
-        // Отрисовать информацию о масштабе
-        drawScaleInfo(bounds, scale);
+        // Восстановить состояние
+        gc.restore();
+        
+        // Отрисовать информацию (без трансформации)
+        drawScaleInfo(bounds);
     }
     
     /**
@@ -110,76 +138,43 @@ public class BuildingVisualizer {
     }
     
     /**
-     * Рассчитать масштаб для отображения.
+     * Отрисовать сетку в мировых координатах.
      */
-    private double calculateScale(Bounds bounds) {
-        double width = bounds.maxX - bounds.minX;
-        double height = bounds.maxY - bounds.minY;
-        
-        double availableWidth = canvas.getWidth() - 2 * PADDING;
-        double availableHeight = canvas.getHeight() - 2 * PADDING;
-        
-        double scaleX = availableWidth / width;
-        double scaleY = availableHeight / height;
-        
-        return Math.min(scaleX, scaleY);
-    }
-    
-    /**
-     * Преобразовать координаты в пиксели canvas.
-     */
-    private double toCanvasX(double x, Bounds bounds, double scale) {
-        return PADDING + (x - bounds.minX) * scale;
-    }
-    
-    private double toCanvasY(double y, Bounds bounds, double scale) {
-        // Инвертировать Y, так как canvas имеет начало сверху
-        return canvas.getHeight() - PADDING - (y - bounds.minY) * scale;
-    }
-    
-    /**
-     * Отрисовать сетку.
-     */
-    private void drawGrid(Bounds bounds, double scale) {
+    private void drawGrid(Bounds bounds) {
         gc.setStroke(GRID_COLOR);
-        gc.setLineWidth(0.5);
+        gc.setLineWidth(0.5 / transform.getScale()); // Толщина линии независима от масштаба
         
         double gridSize = 10.0; // Шаг сетки в единицах координат
         
         // Вертикальные линии
         for (double x = Math.floor(bounds.minX / gridSize) * gridSize; x <= bounds.maxX; x += gridSize) {
-            double canvasX = toCanvasX(x, bounds, scale);
-            gc.strokeLine(canvasX, PADDING, canvasX, canvas.getHeight() - PADDING);
+            gc.strokeLine(x, bounds.minY, x, bounds.maxY);
         }
         
         // Горизонтальные линии
         for (double y = Math.floor(bounds.minY / gridSize) * gridSize; y <= bounds.maxY; y += gridSize) {
-            double canvasY = toCanvasY(y, bounds, scale);
-            gc.strokeLine(PADDING, canvasY, canvas.getWidth() - PADDING, canvasY);
+            gc.strokeLine(bounds.minX, y, bounds.maxX, y);
         }
     }
     
     /**
-     * Отрисовать одно здание.
+     * Отрисовать одно здание в мировых координатах.
      */
-    private void drawBuilding(LocationPlanDTO.BuildingCoordinatesDTO building, Bounds bounds, double scale) {
+    private void drawBuilding(LocationPlanDTO.BuildingCoordinatesDTO building) {
         List<LocationPlanDTO.CoordinatePointDTO> points = building.points();
         
         if (points.isEmpty()) {
             return;
         }
         
-        // Преобразовать координаты в пиксели
+        // Преобразовать координаты
         double[] xPoints = new double[points.size()];
         double[] yPoints = new double[points.size()];
         
         for (int i = 0; i < points.size(); i++) {
             try {
-                double x = Double.parseDouble(points.get(i).x());
-                double y = Double.parseDouble(points.get(i).y());
-                
-                xPoints[i] = toCanvasX(x, bounds, scale);
-                yPoints[i] = toCanvasY(y, bounds, scale);
+                xPoints[i] = Double.parseDouble(points.get(i).x());
+                yPoints[i] = Double.parseDouble(points.get(i).y());
             } catch (NumberFormatException e) {
                 return;
             }
@@ -191,14 +186,19 @@ public class BuildingVisualizer {
         
         // Отрисовать контур
         gc.setStroke(BUILDING_STROKE_COLOR);
-        gc.setLineWidth(BUILDING_STROKE_WIDTH);
+        gc.setLineWidth(BUILDING_STROKE_WIDTH / transform.getScale());
         gc.strokePolygon(xPoints, yPoints, points.size());
         
         // Отрисовать точки
         gc.setFill(POINT_COLOR);
+        double pointRadius = POINT_RADIUS / transform.getScale();
         for (int i = 0; i < xPoints.length; i++) {
-            gc.fillOval(xPoints[i] - POINT_RADIUS, yPoints[i] - POINT_RADIUS, 
-                       POINT_RADIUS * 2, POINT_RADIUS * 2);
+            gc.fillOval(
+                xPoints[i] - pointRadius, 
+                yPoints[i] - pointRadius, 
+                pointRadius * 2, 
+                pointRadius * 2
+            );
         }
         
         // Отрисовать литеру в центре здания
@@ -212,32 +212,45 @@ public class BuildingVisualizer {
         centerY /= yPoints.length;
         
         gc.setFill(TEXT_COLOR);
-        gc.setFont(Font.font("System", FontWeight.BOLD, 16));
-        gc.fillText(building.litera(), centerX - 5, centerY + 5);
+        gc.setFont(Font.font("System", FontWeight.BOLD, 16 / transform.getScale()));
+        
+        // Центрировать текст
+        String text = building.litera();
+        gc.fillText(text, centerX - (text.length() * 4) / transform.getScale(), centerY + 4 / transform.getScale());
     }
     
     /**
-     * Отрисовать информацию о масштабе.
+     * Отрисовать информацию о масштабе и трансформации.
      */
-    private void drawScaleInfo(Bounds bounds, double scale) {
+    private void drawScaleInfo(Bounds bounds) {
         gc.setFill(TEXT_COLOR);
         gc.setFont(Font.font("System", FontWeight.NORMAL, 10));
         
-        String info = String.format("Диапазон: X[%.1f..%.1f], Y[%.1f..%.1f]", 
-                                   bounds.minX, bounds.maxX, bounds.minY, bounds.maxY);
-        gc.fillText(info, 10, canvas.getHeight() - 10);
+        String boundsInfo = String.format("Диапазон: X[%.1f..%.1f], Y[%.1f..%.1f]", 
+                                         bounds.minX, bounds.maxX, bounds.minY, bounds.maxY);
+        gc.fillText(boundsInfo, 10, canvas.getHeight() - 20);
+        
+        String zoomInfo = String.format("Масштаб: %s", transform.getScalePercent());
+        gc.fillText(zoomInfo, 10, canvas.getHeight() - 5);
+    }
+    
+    /**
+     * Вернуть границы всех зданий (публичный метод).
+     */
+    public Bounds getBounds(List<LocationPlanDTO.BuildingCoordinatesDTO> buildings) {
+        return calculateBounds(buildings);
     }
     
     /**
      * Класс для хранения границ координат.
      */
-    private static class Bounds {
-        final double minX;
-        final double maxX;
-        final double minY;
-        final double maxY;
+    public static class Bounds {
+        public final double minX;
+        public final double maxX;
+        public final double minY;
+        public final double maxY;
         
-        Bounds(double minX, double maxX, double minY, double maxY) {
+        public Bounds(double minX, double maxX, double minY, double maxY) {
             this.minX = minX;
             this.maxX = maxX;
             this.minY = minY;
