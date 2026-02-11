@@ -26,6 +26,10 @@ public class CanvasExporter {
     private static final int LEGEND_HEIGHT = 120;
     private static final int MARGIN = 20;
     
+    // Максимальный размер изображения (пиксели)
+    // Ограничение для предотвращения OutOfMemoryError
+    private static final int MAX_DIMENSION = 4096;
+    
     /**
      * Экспортировать Canvas с настройками.
      */
@@ -40,6 +44,19 @@ public class CanvasExporter {
         // Увеличить высоту для легенды
         if (settings.isIncludeLegend()) {
             targetHeight += LEGEND_HEIGHT;
+        }
+        
+        // Применить ограничение размера
+        boolean wasLimited = false;
+        double maxDim = Math.max(targetWidth, targetHeight);
+        if (maxDim > MAX_DIMENSION) {
+            double scale = MAX_DIMENSION / maxDim;
+            targetWidth *= scale;
+            targetHeight *= scale;
+            wasLimited = true;
+            System.out.println("⚠️ Размер изображения уменьшен до " + 
+                (int)targetWidth + "×" + (int)targetHeight + 
+                " для предотвращения ошибки памяти");
         }
         
         // Создать новый Canvas с нужным размером
@@ -76,7 +93,12 @@ public class CanvasExporter {
         // Сохранить
         saveImage(finalImage, settings.getFile(), settings.getFormat());
         
-        System.out.println("✓ Ситуационный план экспортирован: " + settings.getFile().getAbsolutePath());
+        String message = "✓ Ситуационный план экспортирован: " + settings.getFile().getAbsolutePath();
+        if (wasLimited) {
+            message += "\n  Размер был автоматически уменьшен до " + 
+                (int)targetWidth + "×" + (int)targetHeight + " пикселей";
+        }
+        System.out.println(message);
     }
     
     /**
