@@ -19,9 +19,9 @@ import java.util.Optional;
  */
 public class LocationPlanTabController extends BaseTabController {
     
-    private final SaveLocationPlanUseCase saveLocationPlanUseCase;
-    private final LoadLocationPlanUseCase loadLocationPlanUseCase;
-    private final AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase;
+    private SaveLocationPlanUseCase saveLocationPlanUseCase;
+    private LoadLocationPlanUseCase loadLocationPlanUseCase;
+    private AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase;
     
     @FXML private ComboBox<String> scaleComboBox;
     @FXML private DatePicker creationDatePicker;
@@ -41,11 +41,28 @@ public class LocationPlanTabController extends BaseTabController {
     private String currentPassportId;
     
     /**
+     * Пустой конструктор для FXML.
+     * Зависимости будут установлены через setDependencies().
+     */
+    public LocationPlanTabController() {
+        // FXML требует пустого конструктора
+    }
+    
+    /**
      * Конструктор с внедрением зависимостей.
      */
     public LocationPlanTabController(SaveLocationPlanUseCase saveLocationPlanUseCase,
                                     LoadLocationPlanUseCase loadLocationPlanUseCase,
                                     AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase) {
+        setDependencies(saveLocationPlanUseCase, loadLocationPlanUseCase, addBuildingCoordinatesUseCase);
+    }
+    
+    /**
+     * Установить зависимости после создания (для FXML).
+     */
+    public void setDependencies(SaveLocationPlanUseCase saveLocationPlanUseCase,
+                               LoadLocationPlanUseCase loadLocationPlanUseCase,
+                               AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase) {
         if (saveLocationPlanUseCase == null) {
             throw new IllegalArgumentException("SaveLocationPlanUseCase не может быть null");
         }
@@ -63,12 +80,16 @@ public class LocationPlanTabController extends BaseTabController {
     
     @Override
     protected void setupBindings() {
-        planImageView.imageProperty().addListener((obs, oldImage, newImage) -> {
-            placeholderLabel.setVisible(newImage == null);
-            if (removeImageButton != null) {
-                removeImageButton.setDisable(newImage == null);
-            }
-        });
+        if (planImageView != null) {
+            planImageView.imageProperty().addListener((obs, oldImage, newImage) -> {
+                if (placeholderLabel != null) {
+                    placeholderLabel.setVisible(newImage == null);
+                }
+                if (removeImageButton != null) {
+                    removeImageButton.setDisable(newImage == null);
+                }
+            });
+        }
         
         if (scaleComboBox != null) {
             scaleComboBox.getItems().addAll("100", "200", "500", "1000", "2000", "5000");
@@ -81,9 +102,11 @@ public class LocationPlanTabController extends BaseTabController {
         if (creationDatePicker != null) {
             creationDatePicker.setValue(LocalDate.now());
         }
-        placeholderLabel.setVisible(true);
+        if (placeholderLabel != null) {
+            placeholderLabel.setVisible(true);
+        }
         
-        if (currentPassportId != null) {
+        if (currentPassportId != null && saveLocationPlanUseCase != null) {
             loadLocationPlanData();
         }
     }
@@ -93,7 +116,10 @@ public class LocationPlanTabController extends BaseTabController {
             throw new IllegalArgumentException("ID паспорта не может быть пустым");
         }
         this.currentPassportId = passportId;
-        loadLocationPlanData();
+        
+        if (loadLocationPlanUseCase != null) {
+            loadLocationPlanData();
+        }
     }
     
     private void loadLocationPlanData() {
@@ -124,15 +150,15 @@ public class LocationPlanTabController extends BaseTabController {
                 if (buildingsListView != null) {
                     buildingsListView.getItems().clear();
                     for (var building : plan.buildings()) {
-                        String item = String.format("Литера %s (%d точек)", 
-                            building.litera(), building.points().size());
+                        String item = String.format("Литера %s: %s (%d точек)", 
+                            building.litera(), building.description(), building.points().size());
                         buildingsListView.getItems().add(item);
                     }
                 }
                 
-                System.out.println("Данные ситуационного плана загружены");
+                System.out.println("✓ Данные ситуационного плана загружены");
             } else {
-                System.out.println("Ситуационный план не найден, создается новый");
+                System.out.println("ℹ️ Ситуационный план не найден, создается новый");
             }
             
         } catch (ValidationException e) {
@@ -167,6 +193,11 @@ public class LocationPlanTabController extends BaseTabController {
     
     @Override
     public void saveData() {
+        if (saveLocationPlanUseCase == null) {
+            showWarning("Зависимости не установлены");
+            return;
+        }
+        
         if (!validateData()) {
             return;
         }
@@ -226,7 +257,7 @@ public class LocationPlanTabController extends BaseTabController {
     
     @FXML
     private void handleRemoveImage() {
-        if (planImageView.getImage() != null) {
+        if (planImageView != null && planImageView.getImage() != null) {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle("Подтверждение");
             alert.setHeaderText("Удаление изображения");
@@ -236,7 +267,9 @@ public class LocationPlanTabController extends BaseTabController {
                 if (response == ButtonType.OK) {
                     planImageView.setImage(null);
                     currentImageFile = null;
-                    imageInfoLabel.setText("Изображение не загружено");
+                    if (imageInfoLabel != null) {
+                        imageInfoLabel.setText("Изображение не загружено");
+                    }
                 }
             });
         }
@@ -269,13 +302,17 @@ public class LocationPlanTabController extends BaseTabController {
     private void loadImageFromFile(File file) {
         try {
             Image image = new Image(file.toURI().toString());
-            planImageView.setImage(image);
+            if (planImageView != null) {
+                planImageView.setImage(image);
+            }
             currentImageFile = file;
             
             String fileName = file.getName();
             long fileSize = file.length() / 1024;
-            imageInfoLabel.setText(String.format("%s (%.0f KB, %.0f×%.0f px)", 
-                fileName, (double) fileSize, image.getWidth(), image.getHeight()));
+            if (imageInfoLabel != null) {
+                imageInfoLabel.setText(String.format("%s (%.0f KB, %.0f×%.0f px)", 
+                    fileName, (double) fileSize, image.getWidth(), image.getHeight()));
+            }
             
         } catch (Exception e) {
             showError("Ошибка загрузки изображения", e.getMessage());
@@ -288,7 +325,9 @@ public class LocationPlanTabController extends BaseTabController {
         if (file.exists()) {
             loadImageFromFile(file);
         } else {
-            imageInfoLabel.setText("Изображение не найдено: " + path);
+            if (imageInfoLabel != null) {
+                imageInfoLabel.setText("Изображение не найдено: " + path);
+            }
         }
     }
     
