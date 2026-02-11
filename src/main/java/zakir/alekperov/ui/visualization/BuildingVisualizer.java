@@ -79,6 +79,14 @@ public class BuildingVisualizer {
         return measurementTool;
     }
     
+    public double getOriginX() {
+        return originX;
+    }
+    
+    public double getOriginY() {
+        return originY;
+    }
+    
     // Управление сеткой
     public void setGridVisible(boolean visible) {
         this.gridVisible = visible;
@@ -268,6 +276,9 @@ public class BuildingVisualizer {
         // Вычисляем локальное смещение (origin) для работы с большими координатами
         originX = bounds.minX;
         originY = bounds.minY;
+        
+        // Синхронизируем origin с MeasurementTool
+        measurementTool.setOrigin(originX, originY);
         
         // Создаем локальные границы (относительно origin)
         double localWidth = bounds.maxX - bounds.minX;
