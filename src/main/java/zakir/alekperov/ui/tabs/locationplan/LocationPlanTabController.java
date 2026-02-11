@@ -2,10 +2,14 @@ package zakir.alekperov.ui.tabs.locationplan;
 
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -30,6 +34,7 @@ public class LocationPlanTabController extends BaseTabController {
     private SaveLocationPlanUseCase saveLocationPlanUseCase;
     private LoadLocationPlanUseCase loadLocationPlanUseCase;
     private AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase;
+    private DeleteBuildingUseCase deleteBuildingUseCase;
     
     @FXML private ComboBox<String> scaleComboBox;
     @FXML private DatePicker creationDatePicker;
@@ -43,10 +48,11 @@ public class LocationPlanTabController extends BaseTabController {
     @FXML private Button loadImageButton;
     @FXML private Button removeImageButton;
     @FXML private Button addCoordinatesButton;
-    @FXML private ListView<String> buildingsListView;
+    @FXML private ListView<BuildingItem> buildingsListView;
     
     private File currentImageFile;
     private String currentPassportId;
+    private List<LocationPlanDTO.BuildingDTO> currentBuildings = new ArrayList<>();
     
     /**
      * Пустой конструктор для FXML.
@@ -61,8 +67,9 @@ public class LocationPlanTabController extends BaseTabController {
      */
     public LocationPlanTabController(SaveLocationPlanUseCase saveLocationPlanUseCase,
                                     LoadLocationPlanUseCase loadLocationPlanUseCase,
-                                    AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase) {
-        setDependencies(saveLocationPlanUseCase, loadLocationPlanUseCase, addBuildingCoordinatesUseCase);
+                                    AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase,
+                                    DeleteBuildingUseCase deleteBuildingUseCase) {
+        setDependencies(saveLocationPlanUseCase, loadLocationPlanUseCase, addBuildingCoordinatesUseCase, deleteBuildingUseCase);
     }
     
     /**
@@ -70,7 +77,8 @@ public class LocationPlanTabController extends BaseTabController {
      */
     public void setDependencies(SaveLocationPlanUseCase saveLocationPlanUseCase,
                                LoadLocationPlanUseCase loadLocationPlanUseCase,
-                               AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase) {
+                               AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase,
+                               DeleteBuildingUseCase deleteBuildingUseCase) {
         if (saveLocationPlanUseCase == null) {
             throw new IllegalArgumentException("SaveLocationPlanUseCase не может быть null");
         }
@@ -80,10 +88,14 @@ public class LocationPlanTabController extends BaseTabController {
         if (addBuildingCoordinatesUseCase == null) {
             throw new IllegalArgumentException("AddBuildingCoordinatesUseCase не может быть null");
         }
+        if (deleteBuildingUseCase == null) {
+            throw new IllegalArgumentException("DeleteBuildingUseCase не может быть null");
+        }
         
         this.saveLocationPlanUseCase = saveLocationPlanUseCase;
         this.loadLocationPlanUseCase = loadLocationPlanUseCase;
         this.addBuildingCoordinatesUseCase = addBuildingCoordinatesUseCase;
+        this.deleteBuildingUseCase = deleteBuildingUseCase;
     }
     
     @Override
@@ -102,6 +114,11 @@ public class LocationPlanTabController extends BaseTabController {
         if (scaleComboBox != null) {
             scaleComboBox.getItems().addAll("100", "200", "500", "1000", "2000", "5000");
             scaleComboBox.setValue("500");
+        }
+        
+        // Настройка ListView с кастомными ячейками
+        if (buildingsListView != null) {
+            buildingsListView.setCellFactory(param -> new BuildingListCell());
         }
     }
     
@@ -155,12 +172,14 @@ public class LocationPlanTabController extends BaseTabController {
                     loadImageFromPath(plan.imagePath());
                 }
                 
+                // Сохранить список зданий
+                currentBuildings = plan.buildings();
+                
+                // Обновить ListView
                 if (buildingsListView != null) {
                     buildingsListView.getItems().clear();
-                    for (var building : plan.buildings()) {
-                        String item = String.format("Литера %s: %s (%d точек)", 
-                            building.litera(), building.description(), building.points().size());
-                        buildingsListView.getItems().add(item);
+                    for (var building : currentBuildings) {
+                        buildingsListView.getItems().add(new BuildingItem(building));
                     }
                 }
                 
@@ -242,6 +261,7 @@ public class LocationPlanTabController extends BaseTabController {
         currentImageFile = null;
         if (imageInfoLabel != null) imageInfoLabel.setText("Изображение не загружено");
         if (buildingsListView != null) buildingsListView.getItems().clear();
+        currentBuildings.clear();
     }
     
     @FXML
@@ -295,30 +315,30 @@ public class LocationPlanTabController extends BaseTabController {
             return;
         }
         
+        openBuildingDialog(null);
+    }
+    
+    private void openBuildingDialog(LocationPlanDTO.BuildingDTO existingBuilding) {
         try {
-            // Загрузка FXML диалога
             FXMLLoader loader = new FXMLLoader(
                 getClass().getResource("/ui/dialogs/AddBuildingDialog.fxml")
             );
             
             Scene dialogScene = new Scene(loader.load());
-            
-            // Получение контроллера диалога
             AddBuildingDialogController controller = loader.getController();
             
-            // Создание модального окна
             Stage dialogStage = new Stage();
-            dialogStage.setTitle("Добавление здания");
+            dialogStage.setTitle(existingBuilding == null ? "Добавление здания" : "Редактирование здания");
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.setScene(dialogScene);
             dialogStage.setResizable(false);
             
             controller.setDialogStage(dialogStage);
             
-            // Отображение диалога и ожидание закрытия
+            // TODO: Заполнить данными при редактировании
+            
             dialogStage.showAndWait();
             
-            // Обработка результата
             if (controller.isSavedSuccessfully()) {
                 AddBuildingDialogController.BuildingData buildingData = controller.getBuildingData();
                 
@@ -335,7 +355,6 @@ public class LocationPlanTabController extends BaseTabController {
     
     private void saveBuildingToDatabase(AddBuildingDialogController.BuildingData buildingData) {
         try {
-            // Преобразование точек в CoordinatePointData
             List<AddBuildingCoordinatesCommand.CoordinatePointData> pointDatas = new ArrayList<>();
             for (AddBuildingDialogController.Point point : buildingData.getPoints()) {
                 pointDatas.add(new AddBuildingCoordinatesCommand.CoordinatePointData(
@@ -344,7 +363,6 @@ public class LocationPlanTabController extends BaseTabController {
                 ));
             }
             
-            // Создание команды
             AddBuildingCoordinatesCommand command = new AddBuildingCoordinatesCommand(
                 currentPassportId,
                 buildingData.getLitera(),
@@ -352,10 +370,7 @@ public class LocationPlanTabController extends BaseTabController {
                 pointDatas
             );
             
-            // Выполнение команды
             addBuildingCoordinatesUseCase.execute(command);
-            
-            // Обновление списка зданий
             loadLocationPlanData();
             
             showInfo("Здание успешно добавлено!");
@@ -366,6 +381,58 @@ public class LocationPlanTabController extends BaseTabController {
             showError("Ошибка сохранения", "Не удалось сохранить здание: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+    
+    private void handleDeleteBuilding(BuildingItem item) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Подтверждение удаления");
+        alert.setHeaderText("Удаление здания");
+        alert.setContentText("Вы уверены, что хотите удалить здание \"" + item.getBuilding().litera() + "\"?");
+        
+        alert.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try {
+                    DeleteBuildingCommand command = new DeleteBuildingCommand(
+                        currentPassportId,
+                        item.getBuilding().litera()
+                    );
+                    
+                    deleteBuildingUseCase.execute(command);
+                    loadLocationPlanData();
+                    
+                    showInfo("Здание успешно удалено!");
+                    
+                } catch (ValidationException e) {
+                    showError("Ошибка валидации", e.getMessage());
+                } catch (Exception e) {
+                    showError("Ошибка удаления", "Не удалось удалить здание: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+    
+    private void handleEditBuilding(BuildingItem item) {
+        openBuildingDialog(item.getBuilding());
+    }
+    
+    private void handleViewBuilding(BuildingItem item) {
+        StringBuilder info = new StringBuilder();
+        info.append("Литера: ").append(item.getBuilding().litera()).append("\n");
+        info.append("Описание: ").append(item.getBuilding().description()).append("\n\n");
+        info.append("Координаты:\n");
+        
+        int i = 1;
+        for (var point : item.getBuilding().points()) {
+            info.append(String.format("• Точка %d: X=%.2f, Y=%.2f\n", i++, point.x(), point.y()));
+        }
+        
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Информация о здании");
+        alert.setHeaderText("Здание литера " + item.getBuilding().litera());
+        alert.setContentText(info.toString());
+        alert.getDialogPane().setPrefWidth(400);
+        alert.showAndWait();
     }
     
     @FXML
@@ -441,5 +508,79 @@ public class LocationPlanTabController extends BaseTabController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+    
+    // === Inner Classes ===
+    
+    /**
+     * Обертка для здания в ListView.
+     */
+    private static class BuildingItem {
+        private final LocationPlanDTO.BuildingDTO building;
+        
+        public BuildingItem(LocationPlanDTO.BuildingDTO building) {
+            this.building = building;
+        }
+        
+        public LocationPlanDTO.BuildingDTO getBuilding() {
+            return building;
+        }
+    }
+    
+    /**
+     * Кастомная ячейка ListView с кнопками управления.
+     */
+    private class BuildingListCell extends ListCell<BuildingItem> {
+        private final HBox content;
+        private final Label textLabel;
+        private final Button viewButton;
+        private final Button editButton;
+        private final Button deleteButton;
+        
+        public BuildingListCell() {
+            content = new HBox(10);
+            content.setAlignment(Pos.CENTER_LEFT);
+            
+            textLabel = new Label();
+            textLabel.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(textLabel, Priority.ALWAYS);
+            
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+            
+            viewButton = new Button("👁️");
+            viewButton.setTooltip(new Tooltip("Просмотреть"));
+            viewButton.setStyle("-fx-font-size: 14px; -fx-padding: 5 10;");
+            
+            editButton = new Button("✏️");
+            editButton.setTooltip(new Tooltip("Редактировать"));
+            editButton.setStyle("-fx-font-size: 14px; -fx-padding: 5 10;");
+            
+            deleteButton = new Button("🗑️");
+            deleteButton.setTooltip(new Tooltip("Удалить"));
+            deleteButton.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 5 10;");
+            
+            content.getChildren().addAll(textLabel, spacer, viewButton, editButton, deleteButton);
+        }
+        
+        @Override
+        protected void updateItem(BuildingItem item, boolean empty) {
+            super.updateItem(item, empty);
+            
+            if (empty || item == null) {
+                setText(null);
+                setGraphic(null);
+            } else {
+                var building = item.getBuilding();
+                textLabel.setText(String.format("🏗️ Литера %s: %s (%d точек)", 
+                    building.litera(), building.description(), building.points().size()));
+                
+                viewButton.setOnAction(e -> handleViewBuilding(item));
+                editButton.setOnAction(e -> handleEditBuilding(item));
+                deleteButton.setOnAction(e -> handleDeleteBuilding(item));
+                
+                setGraphic(content);
+            }
+        }
     }
 }
