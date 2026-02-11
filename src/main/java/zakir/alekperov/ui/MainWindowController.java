@@ -6,6 +6,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import zakir.alekperov.bootstrap.DependencyContainer;
 import zakir.alekperov.ui.tabs.base.BaseTabController;
+import zakir.alekperov.ui.tabs.locationplan.LocationPlanTabController;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,17 +37,6 @@ public class MainWindowController {
     @FXML
     private void initialize() {
         System.out.println("✓ MainWindowController инициализирован");
-        
-        // Регистрация контроллеров вкладок
-        if (tabPane != null && !tabPane.getTabs().isEmpty()) {
-            for (Tab tab : tabPane.getTabs()) {
-                Object controller = tab.getUserData();
-                if (controller instanceof BaseTabController) {
-                    tabControllers.put(tab, (BaseTabController) controller);
-                    System.out.println("  → Зарегистрирована вкладка: " + tab.getText());
-                }
-            }
-        }
         
         // Установить тестовый паспорт для демонстрации
         loadTestPassport();
@@ -83,9 +73,21 @@ public class MainWindowController {
             return;
         }
         
+        // Явно установить passportId для LocationPlanTabController из DI
+        try {
+            LocationPlanTabController locationPlanController = dependencyContainer.getLocationPlanTabController();
+            if (locationPlanController != null) {
+                locationPlanController.setPassportId(currentPassportId);
+                System.out.println("  → Паспорт установлен для: LocationPlanTabController");
+            }
+        } catch (Exception e) {
+            System.err.println("Ошибка установки паспорта для LocationPlanTabController: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        // Для остальных контроллеров через рефлексию
         for (BaseTabController controller : tabControllers.values()) {
             try {
-                // Если контроллер поддерживает setPassportId
                 var method = controller.getClass().getMethod("setPassportId", String.class);
                 method.invoke(controller, currentPassportId);
                 System.out.println("  → Паспорт установлен для: " + controller.getClass().getSimpleName());
@@ -132,18 +134,18 @@ public class MainWindowController {
             return;
         }
         
-        // Сохранить данные из всех вкладок
-        int savedCount = 0;
-        for (Map.Entry<Tab, BaseTabController> entry : tabControllers.entrySet()) {
-            try {
-                entry.getValue().saveData();
-                savedCount++;
-            } catch (Exception e) {
-                System.err.println("Ошибка сохранения вкладки " + entry.getKey().getText() + ": " + e.getMessage());
+        // Сохранить данные из LocationPlanTabController
+        try {
+            LocationPlanTabController controller = dependencyContainer.getLocationPlanTabController();
+            if (controller != null) {
+                controller.saveData();
+                showInfo("Сохранение завершено", "Данные ситуационного плана сохранены");
             }
+        } catch (Exception e) {
+            System.err.println("Ошибка сохранения: " + e.getMessage());
+            e.printStackTrace();
+            showWarning("Ошибка", "Не удалось сохранить данные: " + e.getMessage());
         }
-        
-        showInfo("Сохранение завершено", "Данные сохранены из " + savedCount + " вкладок");
     }
     
     @FXML
