@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      spacing="15"
+      prefWidth="500"
+      prefHeight="550"
+      style="-fx-padding: 20;">
+
+    <!-- Заголовок -->
+    <Label text="Добавление здания" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+    <Separator/>
+
+    <!-- Основная информация -->
+    <VBox spacing="10">
+        <Label text="Основная информация" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+        
+        <!-- Литера -->
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Литера:" prefWidth="120" style="-fx-text-fill: #d32f2f;"/>
+            <TextField fx:id="literaField" 
+                      promptText="А, Б, В..." 
+                      prefWidth="100"
+                      maxWidth="100"/>
+            <Label text="*" style="-fx-text-fill: #d32f2f;"/>
+        </HBox>
+        
+        <!-- Описание -->
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Описание:" prefWidth="120" style="-fx-text-fill: #d32f2f;"/>
+            <TextField fx:id="descriptionField" 
+                      promptText="Жилой дом, Гараж, Сарай..." 
+                      HBox.hgrow="ALWAYS"/>
+            <Label text="*" style="-fx-text-fill: #d32f2f;"/>
+        </HBox>
+    </VBox>
+
+    <Separator/>
+
+    <!-- Координаты точек -->
+    <VBox spacing="10" VBox.vgrow="ALWAYS">
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Координаты точек" style="-fx-font-weight: bold; -fx-font-size: 14px;" HBox.hgrow="ALWAYS"/>
+            <Button fx:id="addPointButton" 
+                   text="+ Добавить точку" 
+                   onAction="#handleAddPoint"
+                   style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 12px;"/>
+        </HBox>
+        
+        <Label text="Минимум 3 точки для замкнутого контура" 
+              style="-fx-text-fill: #666666; -fx-font-size: 11px;"/>
+        
+        <!-- Таблица координат -->
+        <TableView fx:id="coordinatesTable" VBox.vgrow="ALWAYS" editable="true">
+            <columns>
+                <TableColumn fx:id="pointNumberColumn" text="№" prefWidth="50" editable="false"/>
+                <TableColumn fx:id="xCoordColumn" text="X (м)" prefWidth="150"/>
+                <TableColumn fx:id="yCoordColumn" text="Y (м)" prefWidth="150"/>
+                <TableColumn fx:id="actionColumn" text="Действия" prefWidth="100"/>
+            </columns>
+        </TableView>
+        
+        <HBox spacing="10">
+            <Label text="Всего точек:" style="-fx-font-weight: bold;"/>
+            <Label fx:id="pointCountLabel" text="0" style="-fx-text-fill: #2196F3; -fx-font-weight: bold;"/>
+        </HBox>
+    </VBox>
+
+    <Separator/>
+
+    <!-- Информационная панель -->
+    <VBox spacing="5" style="-fx-padding: 10; -fx-background-color: #fff3cd; -fx-border-radius: 5; -fx-background-radius: 5;">
+        <Label text="ℹ️ Справка" style="-fx-font-weight: bold;"/>
+        <Label text="• Литера - буквенное обозначение здания (А, Б, В и т.д.)" wrapText="true"/>
+        <Label text="• Координаты указываются в метрах относительно границ участка" wrapText="true"/>
+        <Label text="• Для создания контура здания необходимо минимум 3 точки" wrapText="true"/>
+        <Label text="• Точки должны быть указаны по часовой стрелке или против" wrapText="true"/>
+    </VBox>
+
+    <!-- Кнопки действий -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button fx:id="saveButton" 
+               text="💾 Сохранить" 
+               onAction="#handleSave"
+               defaultButton="true"
+               style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;"
+               prefWidth="120"/>
+        <Button fx:id="cancelButton" 
+               text="❌ Отмена" 
+               onAction="#handleCancel"
+               cancelButton="true"
+               prefWidth="120"/>
+    </HBox>
+
+</VBox>
