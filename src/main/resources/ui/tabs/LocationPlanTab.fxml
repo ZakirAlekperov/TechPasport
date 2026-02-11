@@ -78,9 +78,10 @@
             
             <Separator/>
 
-            <!-- Canvas для отрисовки -->
-            <StackPane VBox.vgrow="ALWAYS" style="-fx-background-color: #fafafa; -fx-border-color: #ccc; -fx-border-width: 1;">
-                <Canvas fx:id="buildingCanvas" width="600" height="500"/>
+            <!-- Canvas для отрисовки (БЕЗ фиксированных размеров) -->
+            <StackPane fx:id="canvasContainer" VBox.vgrow="ALWAYS" 
+                       style="-fx-background-color: #fafafa; -fx-border-color: #ccc; -fx-border-width: 1;">
+                <Canvas fx:id="buildingCanvas"/>
                 <Label fx:id="canvasPlaceholder" text="Добавьте здания для отображения" 
                        style="-fx-text-fill: #999; -fx-font-size: 14px;"/>
             </StackPane>
@@ -114,9 +115,9 @@
                     
                     <!-- Подсказка об управлении -->
                     <VBox spacing="2" alignment="CENTER_RIGHT">
-                        <Label text="🖌️ Ctrl+ЛКМ - перемещение | 🔍 Колесо - zoom" 
+                        <Label text="🖱️ Ctrl+ЛКМ - перемещение | 🔍 Колесо - zoom" 
                                style="-fx-font-size: 9px; -fx-text-fill: #666;"/>
-                        <Label text="✏️ Alt+ЛКМ - перетаскивание точки | 🖌️ Клик - выбор" 
+                        <Label text="✏️ Alt+ЛКМ - перетаскивание точки | 🖱️ Клик - выбор" 
                                style="-fx-font-size: 9px; -fx-text-fill: #666;"/>
                     </VBox>
                 </HBox>
