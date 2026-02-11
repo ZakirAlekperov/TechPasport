@@ -6,6 +6,7 @@
 
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
+      fx:controller="zakir.alekperov.ui.dialogs.AddBuildingDialogController"
       spacing="15"
       prefWidth="500"
       prefHeight="550"
