@@ -46,7 +46,7 @@ public class LocationPlanTabController extends BaseTabController {
     @FXML private ListView<BuildingItem> buildingsListView;
     
     @FXML private Canvas buildingCanvas;
-    @FXML private StackPane canvasContainer;  // Контейнер для Canvas
+    @FXML private StackPane canvasContainer;
     @FXML private Label canvasPlaceholder;
     
     @FXML private Button zoomInButton;
@@ -106,19 +106,25 @@ public class LocationPlanTabController extends BaseTabController {
     }
     
     /**
-     * Настроить автоматическое изменение размера Canvas.
+     * Настроить автоматическое изменение размера Canvas БЕЗ циклических зависимостей.
      */
     private void setupCanvasResize() {
-        // Слушатель на изменение ширины контейнера
+        // ИСПРАВЛЕНИЕ: Используем binding вместо listeners
+        // Canvas просто привязывается к размеру контейнера, но не влияет на него
+        buildingCanvas.widthProperty().bind(canvasContainer.widthProperty());
+        buildingCanvas.heightProperty().bind(canvasContainer.heightProperty());
+        
+        // Перерисовываем только когда контейнер меняется
         canvasContainer.widthProperty().addListener((obs, oldVal, newVal) -> {
-            buildingCanvas.setWidth(newVal.doubleValue());
-            updateVisualization();
+            if (Math.abs(newVal.doubleValue() - oldVal.doubleValue()) > 1) {
+                updateVisualization();
+            }
         });
         
-        // Слушатель на изменение высоты контейнера
         canvasContainer.heightProperty().addListener((obs, oldVal, newVal) -> {
-            buildingCanvas.setHeight(newVal.doubleValue());
-            updateVisualization();
+            if (Math.abs(newVal.doubleValue() - oldVal.doubleValue()) > 1) {
+                updateVisualization();
+            }
         });
     }
     
@@ -265,7 +271,6 @@ public class LocationPlanTabController extends BaseTabController {
      */
     private void savePointCoordinates(BuildingVisualizer.PointHandle point) {
         try {
-            // Найти здание
             LocationPlanDTO.BuildingCoordinatesDTO building = currentBuildings.stream()
                 .filter(b -> b.litera().equals(point.buildingLitera))
                 .findFirst()
@@ -276,7 +281,6 @@ public class LocationPlanTabController extends BaseTabController {
                 return;
             }
             
-            // Создать новый список точек с обновлёнными координатами
             List<AddBuildingCoordinatesCommand.CoordinatePointData> pointDatas = new ArrayList<>();
             for (int i = 0; i < building.points().size(); i++) {
                 if (i == point.pointIndex) {
@@ -290,11 +294,9 @@ public class LocationPlanTabController extends BaseTabController {
                 }
             }
             
-            // Удалить старое здание
             DeleteBuildingCommand deleteCommand = new DeleteBuildingCommand(currentPassportId, building.litera());
             deleteBuildingUseCase.execute(deleteCommand);
             
-            // Создать новое с обновлёнными координатами
             AddBuildingCoordinatesCommand addCommand = new AddBuildingCoordinatesCommand(
                 currentPassportId,
                 building.litera(),
@@ -303,9 +305,7 @@ public class LocationPlanTabController extends BaseTabController {
             );
             addBuildingCoordinatesUseCase.execute(addCommand);
             
-            // Перезагрузить данные
             loadLocationPlanData();
-            
             System.out.println("✓ Координаты точки обновлены");
         } catch (Exception e) {
             showError("Ошибка сохранения", e.getMessage());
@@ -678,28 +678,47 @@ public class LocationPlanTabController extends BaseTabController {
         public LocationPlanDTO.BuildingCoordinatesDTO getBuilding() { return building; }
     }
     
+    /**
+     * ИСПРАВЛЕНИЕ 2: Кнопки всегда видны, текст с ellipsis.
+     */
     private class BuildingListCell extends ListCell<BuildingItem> {
         private final HBox content;
         private final Label textLabel;
         private final Button viewButton, editButton, deleteButton;
         
         public BuildingListCell() {
-            content = new HBox(10);
+            content = new HBox(8);
             content.setAlignment(Pos.CENTER_LEFT);
+            
+            // Текст с ограничением ширины и ellipsis
             textLabel = new Label();
-            textLabel.setMaxWidth(Double.MAX_VALUE);
+            textLabel.setStyle("-fx-text-overrun: ellipsis;");
+            textLabel.setMaxWidth(150); // Фиксированная максимальная ширина
             HBox.setHgrow(textLabel, Priority.ALWAYS);
+            
+            // Прокладка
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
+            
+            // Кнопки с фиксированными размерами
             viewButton = new Button("👁️");
             viewButton.setTooltip(new Tooltip("Просмотреть"));
-            viewButton.setStyle("-fx-font-size: 14px; -fx-padding: 5 10;");
+            viewButton.setStyle("-fx-font-size: 14px; -fx-padding: 4 8;");
+            viewButton.setMinWidth(35);
+            viewButton.setMaxWidth(35);
+            
             editButton = new Button("✏️");
             editButton.setTooltip(new Tooltip("Редактировать"));
-            editButton.setStyle("-fx-font-size: 14px; -fx-padding: 5 10;");
+            editButton.setStyle("-fx-font-size: 14px; -fx-padding: 4 8;");
+            editButton.setMinWidth(35);
+            editButton.setMaxWidth(35);
+            
             deleteButton = new Button("🗑️");
             deleteButton.setTooltip(new Tooltip("Удалить"));
-            deleteButton.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 5 10;");
+            deleteButton.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 4 8;");
+            deleteButton.setMinWidth(35);
+            deleteButton.setMaxWidth(35);
+            
             content.getChildren().addAll(textLabel, spacer, viewButton, editButton, deleteButton);
         }
         
@@ -711,7 +730,7 @@ public class LocationPlanTabController extends BaseTabController {
                 setGraphic(null);
             } else {
                 var building = item.getBuilding();
-                textLabel.setText(String.format("🏗️ Литера %s: %s (%d точек)", 
+                textLabel.setText(String.format("🏗️ %s: %s (%d)", 
                     building.litera(), building.description(), building.points().size()));
                 viewButton.setOnAction(e -> handleViewBuilding(item));
                 editButton.setOnAction(e -> handleEditBuilding(item));
