@@ -39,6 +39,24 @@
             <Label text="Примечания:" style="-fx-font-size: 12px;"/>
             <TextArea fx:id="notesArea" promptText="Дополнительная информация" prefRowCount="3"/>
 
+            <Separator/>
+            
+            <!-- НАСТРОЙКИ СЕТКИ -->
+            <Label text="🔲 Настройки сетки" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #2196F3;"/>
+            
+            <!-- Включение сетки -->
+            <CheckBox fx:id="gridVisibleCheckBox" text="Показывать сетку" selected="true" 
+                      onAction="#handleGridVisibilityChange"
+                      style="-fx-font-size: 12px;"/>
+            
+            <!-- Шаг сетки -->
+            <Label text="Шаг сетки (метры):" style="-fx-font-size: 12px;"/>
+            <ComboBox fx:id="gridSizeComboBox" prefWidth="Infinity" 
+                      onAction="#handleGridSizeChange"
+                      promptText="Выберите шаг"/>
+
+            <Separator/>
+
             <!-- Кнопки сохранения -->
             <HBox spacing="10">
                 <Button fx:id="saveButton" text="💾 Сохранить" onAction="#handleSave" 
@@ -78,7 +96,7 @@
             
             <Separator/>
 
-            <!-- Canvas для отрисовки (БЕЗ фиксированных размеров) -->
+            <!-- Canvas для отрисовки -->
             <StackPane fx:id="canvasContainer" VBox.vgrow="ALWAYS" 
                        style="-fx-background-color: #fafafa; -fx-border-color: #ccc; -fx-border-width: 1;">
                 <Canvas fx:id="buildingCanvas"/>
