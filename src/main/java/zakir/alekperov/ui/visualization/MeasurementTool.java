@@ -11,6 +11,7 @@ import java.util.List;
 
 /**
  * Инструмент для измерения расстояний, периметров и площадей на плане.
+ * Поддерживает работу с реальными геодезическими координатами МСК-67.
  */
 public class MeasurementTool {
     
@@ -24,6 +25,10 @@ public class MeasurementTool {
     private boolean active = false;
     private MeasurementMode mode = MeasurementMode.DISTANCE;
     private List<MeasurementPoint> points = new ArrayList<>();
+    
+    // Смещение для преобразования реальных координат в локальные
+    private double originX = 0.0;
+    private double originY = 0.0;
     
     public enum MeasurementMode {
         DISTANCE,      // Расстояние между двумя точками
@@ -49,6 +54,14 @@ public class MeasurementTool {
     public void setMode(MeasurementMode mode) {
         this.mode = mode;
         clearMeasurement();
+    }
+    
+    /**
+     * Установить смещение origin для работы с большими координатами.
+     */
+    public void setOrigin(double originX, double originY) {
+        this.originX = originX;
+        this.originY = originY;
     }
     
     public void addPoint(double worldX, double worldY) {
@@ -204,11 +217,18 @@ public class MeasurementTool {
             // Прямая линия между двумя точками
             MeasurementPoint p1 = points.get(0);
             MeasurementPoint p2 = points.get(1);
-            gc.strokeLine(p1.worldX, p1.worldY, p2.worldX, p2.worldY);
+            
+            // Преобразуем в локальные координаты
+            double localX1 = p1.worldX - originX;
+            double localY1 = p1.worldY - originY;
+            double localX2 = p2.worldX - originX;
+            double localY2 = p2.worldY - originY;
+            
+            gc.strokeLine(localX1, localY1, localX2, localY2);
             
             // Текст с расстоянием в центре
-            double midX = (p1.worldX + p2.worldX) / 2.0;
-            double midY = (p1.worldY + p2.worldY) / 2.0;
+            double midX = (localX1 + localX2) / 2.0;
+            double midY = (localY1 + localY2) / 2.0;
             Double distance = calculateDistance();
             if (distance != null) {
                 drawMeasurementText(gc, transform, midX, midY, 
@@ -219,15 +239,22 @@ public class MeasurementTool {
             for (int i = 0; i < points.size(); i++) {
                 MeasurementPoint p1 = points.get(i);
                 MeasurementPoint p2 = points.get((i + 1) % points.size());
-                gc.strokeLine(p1.worldX, p1.worldY, p2.worldX, p2.worldY);
+                
+                // Преобразуем в локальные координаты
+                double localX1 = p1.worldX - originX;
+                double localY1 = p1.worldY - originY;
+                double localX2 = p2.worldX - originX;
+                double localY2 = p2.worldY - originY;
+                
+                gc.strokeLine(localX1, localY1, localX2, localY2);
             }
             
             // Текст с результатом в центре полигона
             double centerX = 0.0;
             double centerY = 0.0;
             for (MeasurementPoint p : points) {
-                centerX += p.worldX;
-                centerY += p.worldY;
+                centerX += (p.worldX - originX);
+                centerY += (p.worldY - originY);
             }
             centerX /= points.size();
             centerY /= points.size();
@@ -256,9 +283,13 @@ public class MeasurementTool {
         gc.setFill(MEASUREMENT_POINT_COLOR);
         for (MeasurementPoint point : points) {
             double radius = MEASUREMENT_POINT_RADIUS / transform.getScale();
+            // Преобразуем в локальные координаты
+            double localX = point.worldX - originX;
+            double localY = point.worldY - originY;
+            
             gc.fillOval(
-                point.worldX - radius,
-                point.worldY - radius,
+                localX - radius,
+                localY - radius,
                 radius * 2,
                 radius * 2
             );
@@ -268,7 +299,7 @@ public class MeasurementTool {
     }
     
     private void drawMeasurementText(GraphicsContext gc, CanvasTransform transform, 
-                                    double worldX, double worldY, String text) {
+                                    double localX, double localY, String text) {
         double fontSize = 12.0 / transform.getScale();
         gc.setFont(Font.font("System", FontWeight.BOLD, fontSize));
         
@@ -279,23 +310,23 @@ public class MeasurementTool {
         // Фон для текста
         gc.setFill(MEASUREMENT_TEXT_BG);
         gc.fillRect(
-            worldX - textWidth / 2 - 2 / transform.getScale(),
-            worldY - textHeight / 2 - 2 / transform.getScale(),
+            localX - textWidth / 2 - 2 / transform.getScale(),
+            localY - textHeight / 2 - 2 / transform.getScale(),
             textWidth + 4 / transform.getScale(),
             textHeight + 4 / transform.getScale()
         );
         
         // Текст
         gc.setFill(MEASUREMENT_TEXT_COLOR);
-        gc.fillText(text, worldX - textWidth / 2, worldY + fontSize / 3);
+        gc.fillText(text, localX - textWidth / 2, localY + fontSize / 3);
     }
     
     /**
-     * Точка измерения в мировых координатах.
+     * Точка измерения в реальных координатах МСК-67.
      */
     public static class MeasurementPoint {
-        public final double worldX;
-        public final double worldY;
+        public final double worldX;  // Реальные координаты МСК-67
+        public final double worldY;  // Реальные координаты МСК-67
         
         public MeasurementPoint(double worldX, double worldY) {
             this.worldX = worldX;
