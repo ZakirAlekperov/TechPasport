@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Контроллер вкладки "Ситуационный план" с инструментом измерения.
+ * Контроллер вкладки "Ситуационный план" с поддержкой реальных геодезических координат МСК-67.
  */
 public class LocationPlanTabController extends BaseTabController {
     
@@ -189,10 +189,14 @@ public class LocationPlanTabController extends BaseTabController {
         buildingCanvas.setOnMouseClicked(event -> {
             if (event.getButton() != MouseButton.PRIMARY || visualizer == null) return;
             
-            // Режим измерения
+            // Режим измерения - передаем РЕАЛЬНЫЕ координаты МСК-67
             if (visualizer.getMeasurementTool().isActive() && !event.isControlDown() && !event.isAltDown()) {
-                double[] worldCoords = visualizer.getTransform().canvasToWorld(event.getX(), event.getY());
-                visualizer.getMeasurementTool().addPoint(worldCoords[0], worldCoords[1]);
+                double[] localCoords = visualizer.getTransform().canvasToWorld(event.getX(), event.getY());
+                // Преобразуем локальные координаты в реальные МСК-67
+                double realWorldX = localCoords[0] + visualizer.getOriginX();
+                double realWorldY = localCoords[1] + visualizer.getOriginY();
+                
+                visualizer.getMeasurementTool().addPoint(realWorldX, realWorldY);
                 updateMeasurementInfo();
                 updateVisualization();
                 event.consume();
@@ -820,7 +824,7 @@ public class LocationPlanTabController extends BaseTabController {
             info.append(String.format("Площадь: %.2f м²\n\n", measurements.area));
         }
         
-        info.append("Координаты:\n");
+        info.append("Координаты (МСК-67):\n");
         
         int i = 1;
         for (var point : item.getBuilding().points()) {
