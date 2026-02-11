@@ -29,7 +29,7 @@ public final class DependencyContainer {
     private LoadLocationPlanUseCase loadLocationPlanUseCase;
     private AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase;
     
-    // UI Layer - Controllers
+    // UI Layer - Controllers (создаются через FXML)
     private LocationPlanTabController locationPlanTabController;
     
     /**
@@ -43,7 +43,7 @@ public final class DependencyContainer {
         initializeInfrastructure();
         initializeRepositories();
         initializeUseCases();
-        initializeControllers();
+        // Контроллеры создаются через FXML и ControllerFactory
         
         System.out.println("=== Контейнер зависимостей готов ===");
     }
@@ -76,14 +76,12 @@ public final class DependencyContainer {
         addBuildingCoordinatesUseCase = new AddBuildingCoordinatesService(locationPlanRepository);
     }
     
-    private void initializeControllers() {
-        System.out.println("→ Создание контроллеров...");
-        
-        locationPlanTabController = new LocationPlanTabController(
-            saveLocationPlanUseCase,
-            loadLocationPlanUseCase,
-            addBuildingCoordinatesUseCase
-        );
+    /**
+     * Зарегистрировать контроллер, созданный через FXML.
+     */
+    public void registerLocationPlanTabController(LocationPlanTabController controller) {
+        this.locationPlanTabController = controller;
+        System.out.println("✓ LocationPlanTabController зарегистрирован в DI");
     }
     
     /**
