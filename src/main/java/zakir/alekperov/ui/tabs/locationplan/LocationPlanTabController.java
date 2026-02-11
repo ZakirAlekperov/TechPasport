@@ -11,6 +11,7 @@ import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import zakir.alekperov.application.locationplan.*;
@@ -26,7 +27,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Контроллер вкладки "Ситуационный план" с поддержкой zoom/pan, выделения и редактирования точек.
+ * Контроллер вкладки "Ситуационный план" с адаптивным Canvas.
  */
 public class LocationPlanTabController extends BaseTabController {
     
@@ -45,6 +46,7 @@ public class LocationPlanTabController extends BaseTabController {
     @FXML private ListView<BuildingItem> buildingsListView;
     
     @FXML private Canvas buildingCanvas;
+    @FXML private StackPane canvasContainer;  // Контейнер для Canvas
     @FXML private Label canvasPlaceholder;
     
     @FXML private Button zoomInButton;
@@ -96,10 +98,28 @@ public class LocationPlanTabController extends BaseTabController {
             buildingsListView.setCellFactory(param -> new BuildingListCell());
         }
         
-        if (buildingCanvas != null) {
+        if (buildingCanvas != null && canvasContainer != null) {
             visualizer = new BuildingVisualizer(buildingCanvas);
+            setupCanvasResize();
             setupCanvasInteraction();
         }
+    }
+    
+    /**
+     * Настроить автоматическое изменение размера Canvas.
+     */
+    private void setupCanvasResize() {
+        // Слушатель на изменение ширины контейнера
+        canvasContainer.widthProperty().addListener((obs, oldVal, newVal) -> {
+            buildingCanvas.setWidth(newVal.doubleValue());
+            updateVisualization();
+        });
+        
+        // Слушатель на изменение высоты контейнера
+        canvasContainer.heightProperty().addListener((obs, oldVal, newVal) -> {
+            buildingCanvas.setHeight(newVal.doubleValue());
+            updateVisualization();
+        });
     }
     
     /**
@@ -119,14 +139,13 @@ public class LocationPlanTabController extends BaseTabController {
         buildingCanvas.setOnMouseMoved(event -> {
             if (visualizer == null || isPanning) return;
             
-            // Сначала проверить, наведена ли точка (только для выбранного здания)
+            // Сначала проверить, наведена ли точка
             BuildingVisualizer.PointHandle point = visualizer.findPointAt(event.getX(), event.getY(), currentBuildings);
             visualizer.setHoveredPoint(point);
             
             if (point != null) {
                 buildingCanvas.setCursor(javafx.scene.Cursor.CROSSHAIR);
             } else {
-                // Если не точка, проверить здание
                 String hoveredLitera = visualizer.findBuildingAt(event.getX(), event.getY(), currentBuildings);
                 visualizer.setHoveredBuilding(hoveredLitera);
                 buildingCanvas.setCursor(hoveredLitera != null ? javafx.scene.Cursor.HAND : javafx.scene.Cursor.DEFAULT);
@@ -173,7 +192,7 @@ public class LocationPlanTabController extends BaseTabController {
                 return;
             }
             
-            // Перетаскивание точки левой кнопкой (Alt+ЛКМ для явного режима редактирования)
+            // Перетаскивание точки левой кнопкой (Alt+ЛКМ)
             if (event.getButton() == MouseButton.PRIMARY && event.isAltDown()) {
                 BuildingVisualizer.PointHandle point = visualizer.findPointAt(event.getX(), event.getY(), currentBuildings);
                 if (point != null) {
@@ -261,13 +280,11 @@ public class LocationPlanTabController extends BaseTabController {
             List<AddBuildingCoordinatesCommand.CoordinatePointData> pointDatas = new ArrayList<>();
             for (int i = 0; i < building.points().size(); i++) {
                 if (i == point.pointIndex) {
-                    // Обновлённая точка
                     pointDatas.add(new AddBuildingCoordinatesCommand.CoordinatePointData(
                         String.format("%.2f", point.worldX),
                         String.format("%.2f", point.worldY)
                     ));
                 } else {
-                    // Остальные точки без изменений
                     LocationPlanDTO.CoordinatePointDTO p = building.points().get(i);
                     pointDatas.add(new AddBuildingCoordinatesCommand.CoordinatePointData(p.x(), p.y()));
                 }
@@ -293,7 +310,6 @@ public class LocationPlanTabController extends BaseTabController {
         } catch (Exception e) {
             showError("Ошибка сохранения", e.getMessage());
             e.printStackTrace();
-            // Откатить изменения
             loadLocationPlanData();
         }
     }
