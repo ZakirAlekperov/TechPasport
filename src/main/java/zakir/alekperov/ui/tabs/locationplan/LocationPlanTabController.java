@@ -52,7 +52,7 @@ public class LocationPlanTabController extends BaseTabController {
     
     private File currentImageFile;
     private String currentPassportId;
-    private List<LocationPlanDTO.BuildingDTO> currentBuildings = new ArrayList<>();
+    private List<LocationPlanDTO.BuildingCoordinatesDTO> currentBuildings = new ArrayList<>();
     
     /**
      * Пустой конструктор для FXML.
@@ -318,7 +318,7 @@ public class LocationPlanTabController extends BaseTabController {
         openBuildingDialog(null);
     }
     
-    private void openBuildingDialog(LocationPlanDTO.BuildingDTO existingBuilding) {
+    private void openBuildingDialog(LocationPlanDTO.BuildingCoordinatesDTO existingBuilding) {
         try {
             FXMLLoader loader = new FXMLLoader(
                 getClass().getResource("/ui/dialogs/AddBuildingDialog.fxml")
@@ -424,7 +424,7 @@ public class LocationPlanTabController extends BaseTabController {
         
         int i = 1;
         for (var point : item.getBuilding().points()) {
-            info.append(String.format("• Точка %d: X=%.2f, Y=%.2f\n", i++, point.x(), point.y()));
+            info.append(String.format("• Точка %d: X=%s, Y=%s\n", i++, point.x(), point.y()));
         }
         
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -516,13 +516,13 @@ public class LocationPlanTabController extends BaseTabController {
      * Обертка для здания в ListView.
      */
     private static class BuildingItem {
-        private final LocationPlanDTO.BuildingDTO building;
+        private final LocationPlanDTO.BuildingCoordinatesDTO building;
         
-        public BuildingItem(LocationPlanDTO.BuildingDTO building) {
+        public BuildingItem(LocationPlanDTO.BuildingCoordinatesDTO building) {
             this.building = building;
         }
         
-        public LocationPlanDTO.BuildingDTO getBuilding() {
+        public LocationPlanDTO.BuildingCoordinatesDTO getBuilding() {
             return building;
         }
     }
