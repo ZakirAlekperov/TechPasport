@@ -1,16 +1,24 @@
 package zakir.alekperov.ui.tabs.locationplan;
 
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import zakir.alekperov.application.locationplan.*;
 import zakir.alekperov.domain.shared.ValidationException;
+import zakir.alekperov.ui.dialogs.AddBuildingDialogController;
 import zakir.alekperov.ui.tabs.base.BaseTabController;
 
 import java.io.File;
+import java.io.IOException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -277,7 +285,84 @@ public class LocationPlanTabController extends BaseTabController {
     
     @FXML
     private void handleAddCoordinates() {
-        showInfo("Функция добавления координат в разработке");
+        if (currentPassportId == null || currentPassportId.isBlank()) {
+            showWarning("Сначала необходимо создать и сохранить паспорт");
+            return;
+        }
+        
+        if (addBuildingCoordinatesUseCase == null) {
+            showWarning("Зависимости не установлены");
+            return;
+        }
+        
+        try {
+            // Загрузка FXML диалога
+            FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("/ui/dialogs/AddBuildingDialog.fxml")
+            );
+            
+            Scene dialogScene = new Scene(loader.load());
+            
+            // Получение контроллера диалога
+            AddBuildingDialogController controller = loader.getController();
+            
+            // Создание модального окна
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Добавление здания");
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.setScene(dialogScene);
+            dialogStage.setResizable(false);
+            
+            controller.setDialogStage(dialogStage);
+            
+            // Отображение диалога и ожидание закрытия
+            dialogStage.showAndWait();
+            
+            // Обработка результата
+            if (controller.isSavedSuccessfully()) {
+                AddBuildingDialogController.BuildingData buildingData = controller.getBuildingData();
+                
+                if (buildingData != null) {
+                    saveBuildingToDatabase(buildingData);
+                }
+            }
+            
+        } catch (IOException e) {
+            showError("Ошибка загрузки диалога", e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    private void saveBuildingToDatabase(AddBuildingDialogController.BuildingData buildingData) {
+        try {
+            // Преобразование точек в DTO
+            List<CoordinatePointDTO> pointDTOs = new ArrayList<>();
+            for (AddBuildingDialogController.Point point : buildingData.getPoints()) {
+                pointDTOs.add(new CoordinatePointDTO(point.getX(), point.getY()));
+            }
+            
+            // Создание команды
+            AddBuildingCoordinatesCommand command = new AddBuildingCoordinatesCommand(
+                currentPassportId,
+                buildingData.getLitera(),
+                buildingData.getDescription(),
+                pointDTOs
+            );
+            
+            // Выполнение команды
+            addBuildingCoordinatesUseCase.execute(command);
+            
+            // Обновление списка зданий
+            loadLocationPlanData();
+            
+            showInfo("Здание успешно добавлено!");
+            
+        } catch (ValidationException e) {
+            showError("Ошибка валидации", e.getMessage());
+        } catch (Exception e) {
+            showError("Ошибка сохранения", "Не удалось сохранить здание: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
     
     @FXML
