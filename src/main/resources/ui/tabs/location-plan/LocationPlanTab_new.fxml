@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="zakir.alekperov.ui.tabs.locationplan.LocationPlanTabController"
+      spacing="10" style="-fx-padding: 15;">
+    
+    <!-- Заголовок -->
+    <Label text="🗺️ Ситуационный план" 
+           style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+    
+    <!-- Информация о плане -->
+    <HBox spacing="15" alignment="CENTER_LEFT">
+        <Label text="Масштаб 1:"/>
+        <ComboBox fx:id="scaleComboBox" prefWidth="120"/>
+        
+        <Label text="Дата:"/>
+        <DatePicker fx:id="creationDatePicker" prefWidth="150"/>
+        
+        <Label text="Исполнитель:"/>
+        <TextField fx:id="authorField" prefWidth="200" promptText="ФИО"/>
+    </HBox>
+    
+    <Separator/>
+    
+    <!-- Главная область: Canvas + Список зданий -->
+    <HBox spacing="10" VBox.vgrow="ALWAYS">
+        
+        <!-- Левая панель: Список зданий -->
+        <VBox spacing="8" prefWidth="280" minWidth="250">
+            <Label text="🏗️ Список зданий" style="-fx-font-weight: bold;"/>
+            
+            <Button fx:id="addCoordinatesButton" text="+ Добавить здание" 
+                    onAction="#handleAddCoordinates" maxWidth="Infinity"
+                    style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
+            
+            <ListView fx:id="buildingsListView" VBox.vgrow="ALWAYS" 
+                      style="-fx-background-color: #fafafa;"/>
+            
+            <!-- Панель инструментов -->
+            <VBox spacing="8" style="-fx-background-color: #f5f5f5; -fx-padding: 10; -fx-background-radius: 5;">
+                <Label text="🔧 Инструменты" style="-fx-font-weight: bold; -fx-font-size: 11;"/>
+                
+                <!-- Сетка -->
+                <CheckBox fx:id="gridVisibleCheckBox" text="Сетка" selected="true" 
+                          onAction="#handleGridVisibilityChange"/>
+                <HBox spacing="5" alignment="CENTER_LEFT">
+                    <Label text="Шаг:"/>
+                    <ComboBox fx:id="gridSizeComboBox" prefWidth="80" onAction="#handleGridSizeChange"/>
+                    <Label text="м"/>
+                </HBox>
+                
+                <Separator/>
+                
+                <!-- Измерения -->
+                <CheckBox fx:id="measurementActiveCheckBox" text="📏 Измерения" 
+                          onAction="#handleMeasurementActiveChange"/>
+                <ComboBox fx:id="measurementModeComboBox" maxWidth="Infinity" 
+                          onAction="#handleMeasurementModeChange" disable="true"/>
+                <Button fx:id="clearMeasurementButton" text="Очистить" maxWidth="Infinity" 
+                        onAction="#handleClearMeasurement" disable="true"/>
+                <Label fx:id="measurementInfoLabel" text="Инструмент выключен" 
+                       wrapText="true" style="-fx-font-size: 10; -fx-text-fill: #666;"/>
+            </VBox>
+        </VBox>
+        
+        <!-- Правая панель: Canvas -->
+        <VBox spacing="8" HBox.hgrow="ALWAYS">
+            <Label text="🗄️ Визуализация" style="-fx-font-weight: bold;"/>
+            
+            <!-- Панель масштабирования и экспорта -->
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Button fx:id="zoomInButton" text="🔍 +" onAction="#handleZoomIn" 
+                        style="-fx-font-size: 14;"/>
+                <Button fx:id="zoomOutButton" text="🔍 −" onAction="#handleZoomOut" 
+                        style="-fx-font-size: 14;"/>
+                <Button fx:id="zoomResetButton" text="↺ Сброс" onAction="#handleZoomReset"/>
+                
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <!-- 🆕 КНОПКА ЭКСПОРТА -->
+                <Button fx:id="exportButton" text="💾 Экспортировать" 
+                        onAction="#handleExport"
+                        style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;"/>
+            </HBox>
+            
+            <!-- Canvas с placeholder -->
+            <StackPane fx:id="canvasContainer" VBox.vgrow="ALWAYS" 
+                       style="-fx-background-color: white; -fx-border-color: #ddd; -fx-border-width: 1;">
+                <Canvas fx:id="buildingCanvas"/>
+                <Label fx:id="canvasPlaceholder" 
+                       text="Добавьте здания для отображения плана" 
+                       style="-fx-text-fill: #bbb; -fx-font-size: 16;"/>
+            </StackPane>
+            
+            <!-- Информация о выбранном здании -->
+            <Label fx:id="selectedBuildingLabel" wrapText="true"
+                   text="Кликните по зданию для выбора. Alt+ЛКМ на точке - редактирование."
+                   style="-fx-font-size: 11; -fx-text-fill: #999; -fx-padding: 5 0 0 0;"/>
+        </VBox>
+    </HBox>
+    
+    <Separator/>
+    
+    <!-- Примечания -->
+    <VBox spacing="5">
+        <Label text="📝 Примечания" style="-fx-font-weight: bold;"/>
+        <TextArea fx:id="notesArea" prefRowCount="2" wrapText="true" 
+                  promptText="Дополнительная информация..."/>
+    </VBox>
+    
+    <!-- Кнопки действий -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button fx:id="clearButton" text="Очистить" onAction="#handleClear" 
+                style="-fx-min-width: 100;"/>
+        <Button fx:id="saveButton" text="Сохранить" onAction="#handleSave" 
+                style="-fx-min-width: 100; -fx-background-color: #4CAF50; -fx-text-fill: white;"/>
+    </HBox>
+    
+</VBox>
