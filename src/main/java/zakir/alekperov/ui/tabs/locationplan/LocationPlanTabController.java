@@ -4,6 +4,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -17,6 +18,7 @@ import zakir.alekperov.application.locationplan.*;
 import zakir.alekperov.domain.shared.ValidationException;
 import zakir.alekperov.ui.dialogs.AddBuildingDialogController;
 import zakir.alekperov.ui.tabs.base.BaseTabController;
+import zakir.alekperov.ui.visualization.BuildingVisualizer;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,20 +41,19 @@ public class LocationPlanTabController extends BaseTabController {
     @FXML private ComboBox<String> scaleComboBox;
     @FXML private DatePicker creationDatePicker;
     @FXML private TextField authorField;
-    @FXML private ImageView planImageView;
-    @FXML private Label placeholderLabel;
-    @FXML private Label imageInfoLabel;
     @FXML private TextArea notesArea;
     @FXML private Button saveButton;
     @FXML private Button clearButton;
-    @FXML private Button loadImageButton;
-    @FXML private Button removeImageButton;
     @FXML private Button addCoordinatesButton;
     @FXML private ListView<BuildingItem> buildingsListView;
     
-    private File currentImageFile;
+    // Canvas для визуализации
+    @FXML private Canvas buildingCanvas;
+    @FXML private Label canvasPlaceholder;
+    
     private String currentPassportId;
     private List<LocationPlanDTO.BuildingCoordinatesDTO> currentBuildings = new ArrayList<>();
+    private BuildingVisualizer visualizer;
     
     /**
      * Пустой конструктор для FXML.
@@ -100,17 +101,6 @@ public class LocationPlanTabController extends BaseTabController {
     
     @Override
     protected void setupBindings() {
-        if (planImageView != null) {
-            planImageView.imageProperty().addListener((obs, oldImage, newImage) -> {
-                if (placeholderLabel != null) {
-                    placeholderLabel.setVisible(newImage == null);
-                }
-                if (removeImageButton != null) {
-                    removeImageButton.setDisable(newImage == null);
-                }
-            });
-        }
-        
         if (scaleComboBox != null) {
             scaleComboBox.getItems().addAll("100", "200", "500", "1000", "2000", "5000");
             scaleComboBox.setValue("500");
@@ -120,15 +110,17 @@ public class LocationPlanTabController extends BaseTabController {
         if (buildingsListView != null) {
             buildingsListView.setCellFactory(param -> new BuildingListCell());
         }
+        
+        // Инициализация визуализатора
+        if (buildingCanvas != null) {
+            visualizer = new BuildingVisualizer(buildingCanvas);
+        }
     }
     
     @Override
     protected void loadInitialData() {
         if (creationDatePicker != null) {
             creationDatePicker.setValue(LocalDate.now());
-        }
-        if (placeholderLabel != null) {
-            placeholderLabel.setVisible(true);
         }
         
         if (currentPassportId != null && saveLocationPlanUseCase != null) {
@@ -168,10 +160,6 @@ public class LocationPlanTabController extends BaseTabController {
                     notesArea.setText(plan.notes());
                 }
                 
-                if (plan.imagePath() != null && !plan.imagePath().isBlank()) {
-                    loadImageFromPath(plan.imagePath());
-                }
-                
                 // Сохранить список зданий
                 currentBuildings = plan.buildings();
                 
@@ -182,6 +170,9 @@ public class LocationPlanTabController extends BaseTabController {
                         buildingsListView.getItems().add(new BuildingItem(building));
                     }
                 }
+                
+                // Обновить визуализацию
+                updateVisualization();
                 
                 System.out.println("✓ Данные ситуационного плана загружены");
             } else {
@@ -194,6 +185,23 @@ public class LocationPlanTabController extends BaseTabController {
             showError("Ошибка загрузки", "Не удалось загрузить данные: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+    
+    /**
+     * Обновить визуализацию зданий.
+     */
+    private void updateVisualization() {
+        if (visualizer == null) {
+            return;
+        }
+        
+        // Скрыть/показать placeholder
+        if (canvasPlaceholder != null) {
+            canvasPlaceholder.setVisible(currentBuildings == null || currentBuildings.isEmpty());
+        }
+        
+        // Отрисовать здания
+        visualizer.draw(currentBuildings);
     }
     
     @Override
@@ -236,7 +244,7 @@ public class LocationPlanTabController extends BaseTabController {
                 authorField != null ? authorField.getText() : "",
                 creationDatePicker.getValue(),
                 notesArea != null ? notesArea.getText() : "",
-                currentImageFile != null ? currentImageFile.getAbsolutePath() : null
+                null
             );
             
             saveLocationPlanUseCase.execute(command);
@@ -257,50 +265,9 @@ public class LocationPlanTabController extends BaseTabController {
         if (creationDatePicker != null) creationDatePicker.setValue(LocalDate.now());
         if (authorField != null) authorField.clear();
         if (notesArea != null) notesArea.clear();
-        if (planImageView != null) planImageView.setImage(null);
-        currentImageFile = null;
-        if (imageInfoLabel != null) imageInfoLabel.setText("Изображение не загружено");
         if (buildingsListView != null) buildingsListView.getItems().clear();
         currentBuildings.clear();
-    }
-    
-    @FXML
-    private void handleLoadImage() {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Выберите изображение ситуационного плана");
-        
-        fileChooser.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("Изображения", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp"),
-            new FileChooser.ExtensionFilter("PNG", "*.png"),
-            new FileChooser.ExtensionFilter("JPEG", "*.jpg", "*.jpeg"),
-            new FileChooser.ExtensionFilter("Все файлы", "*.*")
-        );
-        
-        File selectedFile = fileChooser.showOpenDialog(planImageView.getScene().getWindow());
-        
-        if (selectedFile != null) {
-            loadImageFromFile(selectedFile);
-        }
-    }
-    
-    @FXML
-    private void handleRemoveImage() {
-        if (planImageView != null && planImageView.getImage() != null) {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Подтверждение");
-            alert.setHeaderText("Удаление изображения");
-            alert.setContentText("Вы уверены, что хотите удалить изображение?");
-            
-            alert.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.OK) {
-                    planImageView.setImage(null);
-                    currentImageFile = null;
-                    if (imageInfoLabel != null) {
-                        imageInfoLabel.setText("Изображение не загружено");
-                    }
-                }
-            });
-        }
+        updateVisualization();
     }
     
     @FXML
@@ -506,38 +473,6 @@ public class LocationPlanTabController extends BaseTabController {
                 clearData();
             }
         });
-    }
-    
-    private void loadImageFromFile(File file) {
-        try {
-            Image image = new Image(file.toURI().toString());
-            if (planImageView != null) {
-                planImageView.setImage(image);
-            }
-            currentImageFile = file;
-            
-            String fileName = file.getName();
-            long fileSize = file.length() / 1024;
-            if (imageInfoLabel != null) {
-                imageInfoLabel.setText(String.format("%s (%.0f KB, %.0f×%.0f px)", 
-                    fileName, (double) fileSize, image.getWidth(), image.getHeight()));
-            }
-            
-        } catch (Exception e) {
-            showError("Ошибка загрузки изображения", e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    
-    private void loadImageFromPath(String path) {
-        File file = new File(path);
-        if (file.exists()) {
-            loadImageFromFile(file);
-        } else {
-            if (imageInfoLabel != null) {
-                imageInfoLabel.setText("Изображение не найдено: " + path);
-            }
-        }
     }
     
     private void showError(String title, String message) {
