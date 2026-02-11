@@ -58,9 +58,9 @@ public class ApplicationLauncher extends Application {
                     // Создаем через пустой конструктор и инициализируем зависимости
                     LocationPlanTabController controller = new LocationPlanTabController();
                     controller.setDependencies(
-                        dependencyContainer.getLocationPlanTabController().saveLocationPlanUseCase,
-                        dependencyContainer.getLocationPlanTabController().loadLocationPlanUseCase,
-                        dependencyContainer.getLocationPlanTabController().addBuildingCoordinatesUseCase
+                        dependencyContainer.getSaveLocationPlanUseCase(),
+                        dependencyContainer.getLoadLocationPlanUseCase(),
+                        dependencyContainer.getAddBuildingCoordinatesUseCase()
                     );
                     System.out.println("✓ LocationPlanTabController создан с зависимостями из DI");
                     return controller;
