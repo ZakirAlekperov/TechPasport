@@ -4,6 +4,7 @@ import zakir.alekperov.infrastructure.database.*;
 import zakir.alekperov.infrastructure.persistence.locationplan.*;
 import zakir.alekperov.application.locationplan.*;
 import zakir.alekperov.domain.locationplan.LocationPlanRepository;
+import zakir.alekperov.ui.tabs.commoninfo.CommonInfoTabController;
 import zakir.alekperov.ui.tabs.locationplan.LocationPlanTabController;
 
 /**
@@ -31,6 +32,7 @@ public final class DependencyContainer {
     private DeleteBuildingUseCase deleteBuildingUseCase;
     
     // UI Layer - Controllers (создаются через FXML)
+    private CommonInfoTabController commonInfoTabController;
     private LocationPlanTabController locationPlanTabController;
     
     /**
@@ -79,7 +81,15 @@ public final class DependencyContainer {
     }
     
     /**
-     * Зарегистрировать контроллер, созданный через FXML.
+     * Зарегистрировать контроллер CommonInfo, созданный через FXML.
+     */
+    public void registerCommonInfoTabController(CommonInfoTabController controller) {
+        this.commonInfoTabController = controller;
+        System.out.println("✓ CommonInfoTabController зарегистрирован в DI");
+    }
+    
+    /**
+     * Зарегистрировать контроллер LocationPlan, созданный через FXML.
      */
     public void registerLocationPlanTabController(LocationPlanTabController controller) {
         this.locationPlanTabController = controller;
@@ -114,6 +124,10 @@ public final class DependencyContainer {
     
     public DatabaseInitializer getDatabaseInitializer() {
         return databaseInitializer;
+    }
+    
+    public CommonInfoTabController getCommonInfoTabController() {
+        return commonInfoTabController;
     }
     
     public LocationPlanTabController getLocationPlanTabController() {

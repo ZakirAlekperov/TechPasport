@@ -6,6 +6,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import zakir.alekperov.bootstrap.DependencyContainer;
 import zakir.alekperov.ui.tabs.base.BaseTabController;
+import zakir.alekperov.ui.tabs.commoninfo.CommonInfoTabController;
 import zakir.alekperov.ui.tabs.locationplan.LocationPlanTabController;
 
 import java.util.HashMap;
@@ -40,6 +41,43 @@ public class MainWindowController {
         
         // Установить тестовый паспорт для демонстрации
         loadTestPassport();
+        
+        // 🌍 НАСТРОЙКА АВТОМАТИЧЕСКОГО ОПРЕДЕЛЕНИЯ СИСТЕМЫ КООРДИНАТ
+        setupRegionSync();
+    }
+    
+    /**
+     * 🌍 НОВЫЙ МЕТОД: Настроить синхронизацию региона между вкладками.
+     * Автоматически передает регион из "Общие сведения" на "Ситуационный план".
+     */
+    private void setupRegionSync() {
+        try {
+            CommonInfoTabController commonInfoController = dependencyContainer.getCommonInfoTabController();
+            LocationPlanTabController locationPlanController = dependencyContainer.getLocationPlanTabController();
+            
+            if (commonInfoController == null || locationPlanController == null) {
+                System.out.println("⚠️ Контроллеры еще не инициализированы, синхронизация региона будет настроена позже");
+                return;
+            }
+            
+            // Установить listener на изменение региона
+            commonInfoController.setRegionChangeListener(region -> {
+                System.out.println("✅ [MainWindow] Передаю регион на ситуационный план: " + region);
+                locationPlanController.setRegion(region);
+            });
+            
+            // Инициализировать, если регион уже заполнен
+            String currentRegion = commonInfoController.getCurrentRegion();
+            if (currentRegion != null && !currentRegion.isBlank()) {
+                System.out.println("🔍 [MainWindow] Текущий регион: " + currentRegion);
+                locationPlanController.setRegion(currentRegion);
+            }
+            
+            System.out.println("✓ Синхронизация региона настроена");
+        } catch (Exception e) {
+            System.err.println("⚠️ Ошибка настройки синхронизации региона: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
     
     /**

@@ -6,6 +6,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import zakir.alekperov.ui.MainWindowController;
+import zakir.alekperov.ui.tabs.commoninfo.CommonInfoTabController;
 import zakir.alekperov.ui.tabs.locationplan.LocationPlanTabController;
 
 /**
@@ -53,9 +54,16 @@ public class ApplicationLauncher extends Application {
             public Object call(Class<?> controllerClass) {
                 System.out.println("🏭 FXMLControllerFactory: запрошен контроллер " + controllerClass.getSimpleName());
                 
-                // Возвращаем контроллеры с зависимостями из DI контейнера
+                // CommonInfoTabController
+                if (controllerClass == CommonInfoTabController.class) {
+                    CommonInfoTabController controller = new CommonInfoTabController();
+                    dependencyContainer.registerCommonInfoTabController(controller);
+                    System.out.println("✓ CommonInfoTabController создан и зарегистрирован в DI");
+                    return controller;
+                }
+                
+                // LocationPlanTabController
                 if (controllerClass == LocationPlanTabController.class) {
-                    // Создаем через пустой конструктор и инициализируем зависимости
                     LocationPlanTabController controller = new LocationPlanTabController();
                     controller.setDependencies(
                         dependencyContainer.getSaveLocationPlanUseCase(),
@@ -63,10 +71,7 @@ public class ApplicationLauncher extends Application {
                         dependencyContainer.getAddBuildingCoordinatesUseCase(),
                         dependencyContainer.getDeleteBuildingUseCase()
                     );
-                    
-                    // Регистрируем контроллер в DI контейнере
                     dependencyContainer.registerLocationPlanTabController(controller);
-                    
                     System.out.println("✓ LocationPlanTabController создан и зарегистрирован в DI");
                     return controller;
                 }
