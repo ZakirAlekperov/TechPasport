@@ -28,6 +28,7 @@ public final class DependencyContainer {
     private SaveLocationPlanUseCase saveLocationPlanUseCase;
     private LoadLocationPlanUseCase loadLocationPlanUseCase;
     private AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase;
+    private DeleteBuildingUseCase deleteBuildingUseCase;
     
     // UI Layer - Controllers (создаются через FXML)
     private LocationPlanTabController locationPlanTabController;
@@ -74,6 +75,7 @@ public final class DependencyContainer {
         saveLocationPlanUseCase = new SaveLocationPlanService(locationPlanRepository);
         loadLocationPlanUseCase = new LoadLocationPlanService(locationPlanRepository);
         addBuildingCoordinatesUseCase = new AddBuildingCoordinatesService(locationPlanRepository);
+        deleteBuildingUseCase = new DeleteBuildingService(locationPlanRepository);
     }
     
     /**
@@ -134,5 +136,9 @@ public final class DependencyContainer {
     
     public AddBuildingCoordinatesUseCase getAddBuildingCoordinatesUseCase() {
         return addBuildingCoordinatesUseCase;
+    }
+    
+    public DeleteBuildingUseCase getDeleteBuildingUseCase() {
+        return deleteBuildingUseCase;
     }
 }
