@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.canvas.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="zakir.alekperov.ui.tabs.locationplan.LocationPlanTabController"
+      spacing="10" style="-fx-background-color: #f5f5f5;">
+    <padding><Insets top="15" right="15" bottom="15" left="15"/></padding>
+
+    <!-- Заголовок -->
+    <Label text="📍 Ситуационный план" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+    <Separator/>
+
+    <!-- Основной контент -->
+    <HBox spacing="15" VBox.vgrow="ALWAYS">
+        <!-- Левая панель: основные параметры -->
+        <VBox spacing="10" prefWidth="350" style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #ddd; -fx-border-radius: 5; -fx-background-radius: 5;">
+            <Label text="Основные параметры" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+            <Separator/>
+
+            <!-- Масштаб -->
+            <Label text="Масштаб плана (1:X):" style="-fx-font-size: 12px;"/>
+            <ComboBox fx:id="scaleComboBox" prefWidth="Infinity" promptText="Выберите масштаб"/>
+
+            <!-- Дата составления -->
+            <Label text="Дата составления:" style="-fx-font-size: 12px;"/>
+            <DatePicker fx:id="creationDatePicker" prefWidth="Infinity"/>
+
+            <!-- Исполнитель -->
+            <Label text="Исполнитель:" style="-fx-font-size: 12px;"/>
+            <TextField fx:id="authorField" promptText="ФИО исполнителя"/>
+
+            <!-- Примечания -->
+            <Label text="Примечания:" style="-fx-font-size: 12px;"/>
+            <TextArea fx:id="notesArea" promptText="Дополнительная информация" prefRowCount="3"/>
+
+            <!-- Кнопки сохранения -->
+            <HBox spacing="10">
+                <Button fx:id="saveButton" text="💾 Сохранить" onAction="#handleSave" 
+                        style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
+                <Button fx:id="clearButton" text="🗑️ Очистить" onAction="#handleClear"
+                        style="-fx-background-color: #f44336; -fx-text-fill: white;"/>
+            </HBox>
+        </VBox>
+
+        <!-- Центральная панель: визуализация -->
+        <VBox spacing="10" HBox.hgrow="ALWAYS" 
+              style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #ddd; -fx-border-radius: 5; -fx-background-radius: 5;">
+            <Label text="🗺️ Визуализация зданий" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+            <Separator/>
+
+            <!-- Canvas для отрисовки -->
+            <StackPane VBox.vgrow="ALWAYS" style="-fx-background-color: #fafafa; -fx-border-color: #ccc; -fx-border-width: 1;">
+                <Canvas fx:id="buildingCanvas" width="600" height="500"/>
+                <Label fx:id="canvasPlaceholder" text="Добавьте здания для отображения" 
+                       style="-fx-text-fill: #999; -fx-font-size: 14px;"/>
+            </StackPane>
+
+            <!-- Легенда -->
+            <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 5;">
+                <Label text="Легенда:" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
+                <HBox spacing="5" alignment="CENTER_LEFT">
+                    <Label text="●" style="-fx-text-fill: #2196F3; -fx-font-size: 16px;"/>
+                    <Label text="Здания" style="-fx-font-size: 11px;"/>
+                </HBox>
+                <HBox spacing="5" alignment="CENTER_LEFT">
+                    <Label text="●" style="-fx-text-fill: #FF5722; -fx-font-size: 16px;"/>
+                    <Label text="Точки контура" style="-fx-font-size: 11px;"/>
+                </HBox>
+            </HBox>
+        </VBox>
+
+        <!-- Правая панель: список зданий -->
+        <VBox spacing="10" prefWidth="320" 
+              style="-fx-background-color: white; -fx-padding: 15; -fx-border-color: #ddd; -fx-border-radius: 5; -fx-background-radius: 5;">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label text="Список зданий" style="-fx-font-size: 14px; -fx-font-weight: bold;" HBox.hgrow="ALWAYS"/>
+                <Button fx:id="addCoordinatesButton" text="+ Добавить" onAction="#handleAddCoordinates"
+                        style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 11px;"/>
+            </HBox>
+            <Separator/>
+
+            <!-- Список зданий -->
+            <ListView fx:id="buildingsListView" VBox.vgrow="ALWAYS"/>
+        </VBox>
+    </HBox>
+</VBox>
