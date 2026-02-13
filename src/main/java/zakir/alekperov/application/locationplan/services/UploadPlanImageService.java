@@ -17,6 +17,13 @@ import zakir.alekperov.domain.shared.ValidationException;
  * - Вызов domain логики
  * - Вызов репозитория для персистентности
  * - Обработка исключений
+ * 
+ * Архитектурное решение:
+ * - Final класс (не наследуется)
+ * - Инжекция зависимостей через конструктор
+ * - Проверка null в конструкторе
+ * - ValidationException пробрасывается как есть
+ * - Технические исключения оборачиваются в RuntimeException
  */
 public final class UploadPlanImageService implements UploadPlanImageUseCase {
     
@@ -45,7 +52,7 @@ public final class UploadPlanImageService implements UploadPlanImageUseCase {
             PassportId passportId = new PassportId(command.passportId());
             PlanImage planImage = new PlanImage(command.imageData(), command.fileName());
             
-            // Создание domain модели
+            // Создание LocationPlan с изображением
             LocationPlan locationPlan = LocationPlan.createWithUploadedImage(
                 passportId,
                 planImage,
