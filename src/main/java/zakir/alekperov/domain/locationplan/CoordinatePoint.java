@@ -1,56 +1,79 @@
 package zakir.alekperov.domain.locationplan;
 
 import zakir.alekperov.domain.shared.ValidationException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+
 import java.util.Objects;
 
+/**
+ * Точка координат в системе МСК-67.
+ * Value Object - неизменяемый объект без идентичности.
+ * 
+ * Инварианты:
+ * - Координаты X и Y не могут быть null
+ * - Координаты должны быть валидными числами
+ */
 public final class CoordinatePoint {
-    private static final int SCALE = 2;
     
-    private final BigDecimal x;
-    private final BigDecimal y;
+    private final double x;
+    private final double y;
     
-    private CoordinatePoint(BigDecimal x, BigDecimal y) {
-        if (x == null || y == null) {
-            throw new ValidationException("Координаты не могут быть null");
-        }
-        this.x = x.setScale(SCALE, RoundingMode.HALF_UP);
-        this.y = y.setScale(SCALE, RoundingMode.HALF_UP);
-    }
-    
-    public static CoordinatePoint of(BigDecimal x, BigDecimal y) {
-        return new CoordinatePoint(x, y);
+    public CoordinatePoint(double x, double y) {
+        this.x = validateCoordinate(x, "X");
+        this.y = validateCoordinate(y, "Y");
     }
     
     public static CoordinatePoint fromStrings(String xStr, String yStr) {
-        if (xStr == null || xStr.isBlank() || yStr == null || yStr.isBlank()) {
-            throw new ValidationException("Координаты не могут быть пустыми");
+        if (xStr == null || xStr.isBlank()) {
+            throw new ValidationException("Координата X не может быть пустой");
+        }
+        if (yStr == null || yStr.isBlank()) {
+            throw new ValidationException("Координата Y не может быть пустой");
         }
         
         try {
-            BigDecimal x = new BigDecimal(xStr.trim().replace(',', '.'));
-            BigDecimal y = new BigDecimal(yStr.trim().replace(',', '.'));
+            double x = Double.parseDouble(xStr.trim());
+            double y = Double.parseDouble(yStr.trim());
             return new CoordinatePoint(x, y);
         } catch (NumberFormatException e) {
-            throw new ValidationException("Неверный формат координат: x=" + xStr + ", y=" + yStr);
+            throw new ValidationException(
+                "Некорректный формат координат. Ожидаются числа, получено: X='" + xStr + "', Y='" + yStr + "'"
+            );
         }
     }
     
-    public BigDecimal getX() {
+    public double getX() {
         return x;
     }
     
-    public BigDecimal getY() {
+    public double getY() {
         return y;
     }
     
+    public double distanceTo(CoordinatePoint other) {
+        if (other == null) {
+            throw new IllegalArgumentException("Точка не может быть null");
+        }
+        double dx = this.x - other.x;
+        double dy = this.y - other.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    
     public String formatX() {
-        return x.toPlainString();
+        return String.format("%.2f", x);
     }
     
     public String formatY() {
-        return y.toPlainString();
+        return String.format("%.2f", y);
+    }
+    
+    private double validateCoordinate(double value, String name) {
+        if (Double.isNaN(value)) {
+            throw new ValidationException("Координата " + name + " не может быть NaN");
+        }
+        if (Double.isInfinite(value)) {
+            throw new ValidationException("Координата " + name + " не может быть бесконечной");
+        }
+        return value;
     }
     
     @Override
@@ -58,7 +81,7 @@ public final class CoordinatePoint {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         CoordinatePoint that = (CoordinatePoint) o;
-        return x.compareTo(that.x) == 0 && y.compareTo(that.y) == 0;
+        return Double.compare(that.x, x) == 0 && Double.compare(that.y, y) == 0;
     }
     
     @Override

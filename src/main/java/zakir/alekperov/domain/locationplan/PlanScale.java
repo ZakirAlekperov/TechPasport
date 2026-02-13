@@ -1,58 +1,81 @@
 package zakir.alekperov.domain.locationplan;
 
 import zakir.alekperov.domain.shared.ValidationException;
+
 import java.util.Objects;
 
+/**
+ * Масштаб ситуационного плана.
+ * Value Object - неизменяемый объект.
+ * 
+ * Инварианты:
+ * - Знаменатель масштаба должен быть положительным числом
+ * - Знаменатель должен быть одним из стандартных значений: 100, 200, 500, 1000, 2000, 5000
+ */
 public final class PlanScale {
-    private static final int[] ALLOWED_DENOMINATORS = {100, 200, 500, 1000, 2000, 5000};
+    
+    private static final int[] ALLOWED_SCALES = {100, 200, 500, 1000, 2000, 5000};
     
     private final int denominator;
     
-    private PlanScale(int denominator) {
-        if (denominator <= 0) {
-            throw new ValidationException("Знаменатель масштаба должен быть больше 0");
-        }
-        if (!isAllowedDenominator(denominator)) {
-            throw new ValidationException(
-                "Недопустимый масштаб. Допустимые: 1:100, 1:200, 1:500, 1:1000, 1:2000, 1:5000"
-            );
-        }
-        this.denominator = denominator;
+    public PlanScale(int denominator) {
+        this.denominator = validateDenominator(denominator);
     }
     
-    public static PlanScale fromDenominator(int denominator) {
-        return new PlanScale(denominator);
-    }
-    
-    public static PlanScale fromString(String scaleStr) {
-        if (scaleStr == null || scaleStr.isBlank()) {
-            throw new ValidationException("Строка масштаба не может быть пустой");
+    public static PlanScale fromString(String denominatorStr) {
+        if (denominatorStr == null || denominatorStr.isBlank()) {
+            throw new ValidationException("Масштаб не может быть пустым");
         }
         
-        String cleaned = scaleStr.trim().replace("1:", "").replace(":", "");
         try {
-            int denominator = Integer.parseInt(cleaned);
+            int denominator = Integer.parseInt(denominatorStr.trim());
             return new PlanScale(denominator);
         } catch (NumberFormatException e) {
-            throw new ValidationException("Неверный формат масштаба: " + scaleStr);
+            throw new ValidationException(
+                "Некорректный формат масштаба. Ожидается целое число, получено: '" + denominatorStr + "'"
+            );
         }
-    }
-    
-    private static boolean isAllowedDenominator(int denominator) {
-        for (int allowed : ALLOWED_DENOMINATORS) {
-            if (allowed == denominator) {
-                return true;
-            }
-        }
-        return false;
     }
     
     public int getDenominator() {
         return denominator;
     }
     
-    public String format() {
+    public String toDisplayString() {
         return "1:" + denominator;
+    }
+    
+    public double paperDistanceToRealMeters(double paperMillimeters) {
+        return paperMillimeters * denominator / 1000.0;
+    }
+    
+    public double realMetersToPaperDistance(double realMeters) {
+        return realMeters * 1000.0 / denominator;
+    }
+    
+    private int validateDenominator(int denominator) {
+        if (denominator <= 0) {
+            throw new ValidationException(
+                "Знаменатель масштаба должен быть положительным числом, получено: " + denominator
+            );
+        }
+        
+        boolean isAllowed = false;
+        for (int allowed : ALLOWED_SCALES) {
+            if (denominator == allowed) {
+                isAllowed = true;
+                break;
+            }
+        }
+        
+        if (!isAllowed) {
+            throw new ValidationException(
+                "Неподдерживаемый масштаб: 1:" + denominator + ". " +
+                "Допустимые значения: 1:100, 1:200, 1:500, 1:1000, 1:2000, 1:5000"
+            );
+        }
+        
+        return denominator;
     }
     
     @Override
@@ -70,6 +93,6 @@ public final class PlanScale {
     
     @Override
     public String toString() {
-        return format();
+        return toDisplayString();
     }
 }
