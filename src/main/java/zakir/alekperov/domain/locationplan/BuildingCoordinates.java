@@ -16,6 +16,12 @@ import java.util.Objects;
  * - Описание не может быть пустым
  * - Должно быть минимум 3 точки координат
  * - Координаты должны образовывать замкнутый контур
+ * 
+ * Архитектурное решение:
+ * - Entity с идентичностью по литере
+ * - Immutable после создания
+ * - Defensive copy для коллекции точек
+ * - Валидация в конструкторе
  */
 public final class BuildingCoordinates {
     
@@ -23,6 +29,14 @@ public final class BuildingCoordinates {
     private final String description;
     private final List<CoordinatePoint> points;
     
+    /**
+     * Создать координаты здания.
+     * 
+     * @param litera литера здания (А, Б, В и т.д.)
+     * @param description описание здания
+     * @param points список точек координат (минимум 3)
+     * @throws ValidationException если нарушены инварианты
+     */
     public BuildingCoordinates(
             BuildingLitera litera,
             String description,
@@ -41,13 +55,21 @@ public final class BuildingCoordinates {
         return description;
     }
     
+    /**
+     * Получить неизменяемую коллекцию точек координат.
+     */
     public List<CoordinatePoint> getPoints() {
         return Collections.unmodifiableList(points);
     }
     
+    /**
+     * Получить количество точек.
+     */
     public int getPointsCount() {
         return points.size();
     }
+    
+    // === Валидация инвариантов ===
     
     private BuildingLitera validateLitera(BuildingLitera litera) {
         if (litera == null) {
@@ -80,6 +102,7 @@ public final class BuildingCoordinates {
             }
         }
         
+        // Defensive copy
         return new ArrayList<>(points);
     }
     
