@@ -11,6 +11,11 @@ import java.util.Objects;
  * Инварианты:
  * - Знаменатель масштаба должен быть положительным числом
  * - Знаменатель должен быть одним из стандартных значений: 100, 200, 500, 1000, 2000, 5000
+ * 
+ * Архитектурное решение:
+ * - Immutable Value Object
+ * - Валидация допустимых значений
+ * - Методы преобразования между масштабом и реальными размерами
  */
 public final class PlanScale {
     
@@ -18,10 +23,22 @@ public final class PlanScale {
     
     private final int denominator;
     
+    /**
+     * Создать масштаб плана.
+     * 
+     * @param denominator знаменатель масштаба (например, 500 для масштаба 1:500)
+     * @throws ValidationException если масштаб невалиден
+     */
     public PlanScale(int denominator) {
         this.denominator = validateDenominator(denominator);
     }
     
+    /**
+     * Создать масштаб из строки.
+     * 
+     * @param denominatorStr строковое значение знаменателя
+     * @throws ValidationException если строка не может быть преобразована
+     */
     public static PlanScale fromString(String denominatorStr) {
         if (denominatorStr == null || denominatorStr.isBlank()) {
             throw new ValidationException("Масштаб не может быть пустым");
@@ -41,17 +58,28 @@ public final class PlanScale {
         return denominator;
     }
     
+    /**
+     * Получить текстовое представление масштаба.
+     */
     public String toDisplayString() {
         return "1:" + denominator;
     }
     
+    /**
+     * Преобразовать расстояние на бумаге (в мм) в реальное расстояние (в метрах).
+     */
     public double paperDistanceToRealMeters(double paperMillimeters) {
         return paperMillimeters * denominator / 1000.0;
     }
     
+    /**
+     * Преобразовать реальное расстояние (в метрах) в расстояние на бумаге (в мм).
+     */
     public double realMetersToPaperDistance(double realMeters) {
         return realMeters * 1000.0 / denominator;
     }
+    
+    // === Валидация инвариантов ===
     
     private int validateDenominator(int denominator) {
         if (denominator <= 0) {
