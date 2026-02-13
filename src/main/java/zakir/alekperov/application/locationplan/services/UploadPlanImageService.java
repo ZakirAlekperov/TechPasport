@@ -24,26 +24,26 @@ public final class UploadPlanImageService implements UploadPlanImageUseCase {
         if (command == null) {
             throw new IllegalArgumentException("Команда не может быть null");
         }
-        if (command.getImageData() == null || command.getImageData().length == 0) {
+        if (command.imageData() == null || command.imageData().length == 0) {
             throw new IllegalArgumentException("Данные изображения не могут быть пустыми");
         }
-        if (command.getFileName() == null || command.getFileName().isBlank()) {
+        if (command.fileName() == null || command.fileName().isBlank()) {
             throw new IllegalArgumentException("Имя файла не может быть пустым");
         }
         
-        PassportId passportId = PassportId.fromString(command.getPassportId());
+        PassportId passportId = PassportId.fromString(command.passportId());
         
         PlanImage planImage = new PlanImage(
-            command.getImageData(),
-            command.getFileName()
+            command.imageData(),
+            command.fileName()
         );
         
-        String notes = command.getNotes() != null ? command.getNotes() : "";
+        String notes = command.notes() != null ? command.notes() : "";
         
         LocationPlan plan = LocationPlan.createWithUploadedImage(
             passportId,
             planImage,
-            LocalDate.now(),
+            command.planDate(),
             notes
         );
         
