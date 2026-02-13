@@ -12,6 +12,11 @@ import java.util.Objects;
  * - Литера не может быть пустой
  * - Литера может содержать только буквы латиницы или кириллицы и цифры
  * - Максимальная длина 10 символов
+ * 
+ * Архитектурное решение:
+ * - Immutable Value Object
+ * - Валидация формата в конструкторе
+ * - Regex для проверки допустимых символов
  */
 public final class BuildingLitera {
     
@@ -20,6 +25,12 @@ public final class BuildingLitera {
     
     private final String value;
     
+    /**
+     * Создать литеру здания.
+     * 
+     * @param value значение литеры
+     * @throws ValidationException если литера невалидна
+     */
     public BuildingLitera(String value) {
         this.value = validateValue(value);
     }
@@ -27,6 +38,8 @@ public final class BuildingLitera {
     public String getValue() {
         return value;
     }
+    
+    // === Валидация инвариантов ===
     
     private String validateValue(String value) {
         if (value == null || value.isBlank()) {
