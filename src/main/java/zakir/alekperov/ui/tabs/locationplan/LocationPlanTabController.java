@@ -5,17 +5,18 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.ScrollEvent;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import zakir.alekperov.application.locationplan.*;
-import zakir.alekperov.domain.shared.ValidationException;
 import zakir.alekperov.ui.dialogs.AddBuildingDialogController;
 import zakir.alekperov.ui.dialogs.ExportDialog;
 import zakir.alekperov.ui.export.CanvasExporter;
@@ -23,15 +24,17 @@ import zakir.alekperov.ui.tabs.base.BaseTabController;
 import zakir.alekperov.ui.visualization.BuildingVisualizer;
 import zakir.alekperov.ui.visualization.MeasurementTool;
 
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Контроллер вкладки "Ситуационный план" с поддержкой реальных геодезических координат МСК.
- * Автоматически определяет систему координат по субъекту РФ из первой вкладки.
+ * Контроллер вкладки "Ситуационный план" с поддержкой:
+ * - Ручного рисования с реальными геодезическими координатами МСК
+ * - Загрузки готового изображения плана
  */
 public class LocationPlanTabController extends BaseTabController {
     
@@ -39,7 +42,25 @@ public class LocationPlanTabController extends BaseTabController {
     private LoadLocationPlanUseCase loadLocationPlanUseCase;
     private AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase;
     private DeleteBuildingUseCase deleteBuildingUseCase;
+    private UploadPlanImageUseCase uploadPlanImageUseCase;  // 🆕
     
+    // 🆕 РЕЖИМ РАБОТЫ
+    @FXML private RadioButton manualDrawingRadio;
+    @FXML private RadioButton uploadImageRadio;
+    @FXML private Label modeDescriptionLabel;
+    
+    // 🆕 ПАНЕЛЬ ЗАГРУЗКИ ИЗОБРАЖЕНИЯ
+    @FXML private VBox uploadModePanel;
+    @FXML private Button uploadImageButton;
+    @FXML private Label uploadedFileNameLabel;
+    @FXML private StackPane imagePreviewContainer;
+    @FXML private ImageView uploadedImageView;
+    @FXML private Label imagePreviewPlaceholder;
+    @FXML private DatePicker uploadDatePicker;
+    @FXML private TextArea uploadNotesArea;
+    
+    // ПАНЕЛЬ РУЧНОГО РИСОВАНИЯ
+    @FXML private VBox manualModePanel;
     @FXML private ComboBox<String> scaleComboBox;
     @FXML private DatePicker creationDatePicker;
     @FXML private TextField authorField;
@@ -47,7 +68,7 @@ public class LocationPlanTabController extends BaseTabController {
     @FXML private Button saveButton;
     @FXML private Button clearButton;
     @FXML private Button addCoordinatesButton;
-    @FXML private Button exportButton;  // 🆕 Кнопка экспорта
+    @FXML private Button exportButton;
     @FXML private ListView<BuildingItem> buildingsListView;
     
     @FXML private Canvas buildingCanvas;
@@ -71,9 +92,13 @@ public class LocationPlanTabController extends BaseTabController {
     @FXML private Label measurementInfoLabel;
     
     private String currentPassportId;
-    private String currentRegion;  // Субъект РФ из первой вкладки
+    private String currentRegion;
     private List<LocationPlanDTO.BuildingCoordinatesDTO> currentBuildings = new ArrayList<>();
     private BuildingVisualizer visualizer;
+    
+    // 🆕 Для режима загрузки изображения
+    private File uploadedImageFile;
+    private Image uploadedImage;
     
     private double lastMouseX;
     private double lastMouseY;
@@ -84,16 +109,20 @@ public class LocationPlanTabController extends BaseTabController {
     public LocationPlanTabController(SaveLocationPlanUseCase saveLocationPlanUseCase,
                                     LoadLocationPlanUseCase loadLocationPlanUseCase,
                                     AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase,
-                                    DeleteBuildingUseCase deleteBuildingUseCase) {
-        setDependencies(saveLocationPlanUseCase, loadLocationPlanUseCase, addBuildingCoordinatesUseCase, deleteBuildingUseCase);
+                                    DeleteBuildingUseCase deleteBuildingUseCase,
+                                    UploadPlanImageUseCase uploadPlanImageUseCase) {
+        setDependencies(saveLocationPlanUseCase, loadLocationPlanUseCase, 
+            addBuildingCoordinatesUseCase, deleteBuildingUseCase, uploadPlanImageUseCase);
     }
     
     public void setDependencies(SaveLocationPlanUseCase saveLocationPlanUseCase,
                                LoadLocationPlanUseCase loadLocationPlanUseCase,
                                AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase,
-                               DeleteBuildingUseCase deleteBuildingUseCase) {
+                               DeleteBuildingUseCase deleteBuildingUseCase,
+                               UploadPlanImageUseCase uploadPlanImageUseCase) {
         if (saveLocationPlanUseCase == null || loadLocationPlanUseCase == null || 
-            addBuildingCoordinatesUseCase == null || deleteBuildingUseCase == null) {
+            addBuildingCoordinatesUseCase == null || deleteBuildingUseCase == null ||
+            uploadPlanImageUseCase == null) {
             throw new IllegalArgumentException("Зависимости не могут быть null");
         }
         
@@ -101,14 +130,9 @@ public class LocationPlanTabController extends BaseTabController {
         this.loadLocationPlanUseCase = loadLocationPlanUseCase;
         this.addBuildingCoordinatesUseCase = addBuildingCoordinatesUseCase;
         this.deleteBuildingUseCase = deleteBuildingUseCase;
+        this.uploadPlanImageUseCase = uploadPlanImageUseCase;
     }
     
-    /**
-     * НОВЫЙ МЕТОД: Установить регион (субъект РФ) для автоматического определения системы координат.
-     * Вызывается из первой вкладки при изменении поля "Субъект".
-     * 
-     * @param regionName Название субъекта РФ (например, "Смоленская область")
-     */
     public void setRegion(String regionName) {
         this.currentRegion = regionName;
         if (visualizer != null && regionName != null && !regionName.isBlank()) {
@@ -125,13 +149,11 @@ public class LocationPlanTabController extends BaseTabController {
             scaleComboBox.setValue("500");
         }
         
-        // Инициализация элементов управления сеткой
         if (gridSizeComboBox != null) {
             gridSizeComboBox.getItems().addAll("1", "2", "5", "10", "25", "50");
             gridSizeComboBox.setValue("10");
         }
         
-        // Инициализация инструмента измерения
         if (measurementModeComboBox != null) {
             measurementModeComboBox.getItems().addAll(
                 "📏 Расстояние (2 точки)",
@@ -148,7 +170,6 @@ public class LocationPlanTabController extends BaseTabController {
         if (buildingCanvas != null && canvasContainer != null) {
             visualizer = new BuildingVisualizer(buildingCanvas);
             
-            // Если регион уже был установлен до инициализации visualizer
             if (currentRegion != null && !currentRegion.isBlank()) {
                 visualizer.setRegion(currentRegion);
             }
@@ -158,10 +179,86 @@ public class LocationPlanTabController extends BaseTabController {
         }
     }
     
+    // ============ 🆕 РЕЖИМ РАБОТЫ ============
+    
     /**
-     * КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Canvas полностью управляется контейнером.
-     * Canvas НЕ участвует в расчете размера layout.
+     * Обработчик переключения режима работы (ручное рисование / загрузка изображения).
      */
+    @FXML
+    private void handleModeChange() {
+        boolean isManualMode = manualDrawingRadio != null && manualDrawingRadio.isSelected();
+        
+        // Переключить видимость панелей
+        if (manualModePanel != null) {
+            manualModePanel.setVisible(isManualMode);
+            manualModePanel.setManaged(isManualMode);
+        }
+        
+        if (uploadModePanel != null) {
+            uploadModePanel.setVisible(!isManualMode);
+            uploadModePanel.setManaged(!isManualMode);
+        }
+        
+        // Обновить описание режима
+        if (modeDescriptionLabel != null) {
+            if (isManualMode) {
+                modeDescriptionLabel.setText("Создайте план вручную, указав координаты зданий");
+            } else {
+                modeDescriptionLabel.setText("Загрузите готовое изображение ситуационного плана (PNG, JPG)");
+            }
+        }
+        
+        System.out.println("🔄 Режим: " + (isManualMode ? "Ручное рисование" : "Загрузка изображения"));
+    }
+    
+    /**
+     * 🆕 Обработчик загрузки изображения.
+     */
+    @FXML
+    private void handleUploadImage() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Выберите изображение ситуационного плана");
+        fileChooser.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter("Изображения", "*.png", "*.jpg", "*.jpeg"),
+            new FileChooser.ExtensionFilter("PNG", "*.png"),
+            new FileChooser.ExtensionFilter("JPEG", "*.jpg", "*.jpeg")
+        );
+        
+        // Открыть диалог выбора файла
+        Stage stage = (Stage) uploadImageButton.getScene().getWindow();
+        File selectedFile = fileChooser.showOpenDialog(stage);
+        
+        if (selectedFile != null && selectedFile.exists()) {
+            try {
+                // Загрузить изображение
+                uploadedImageFile = selectedFile;
+                uploadedImage = new Image(selectedFile.toURI().toString());
+                
+                // Отобразить превью
+                if (uploadedImageView != null) {
+                    uploadedImageView.setImage(uploadedImage);
+                }
+                
+                if (imagePreviewPlaceholder != null) {
+                    imagePreviewPlaceholder.setVisible(false);
+                }
+                
+                if (uploadedFileNameLabel != null) {
+                    uploadedFileNameLabel.setText("✅ " + selectedFile.getName());
+                    uploadedFileNameLabel.setStyle("-fx-text-fill: #4CAF50; -fx-font-weight: bold;");
+                }
+                
+                System.out.println("✅ Изображение загружено: " + selectedFile.getName());
+                
+            } catch (Exception e) {
+                showError("Ошибка загрузки", "Не удалось загрузить изображение: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    // ============ CANVAS ============
+    
     private void setupCanvasResize() {
         buildingCanvas.setManaged(false);
         
@@ -177,9 +274,6 @@ public class LocationPlanTabController extends BaseTabController {
         });
     }
     
-    /**
-     * Настроить интерактивность Canvas: zoom, pan, selection, measurement.
-     */
     private void setupCanvasInteraction() {
         buildingCanvas.setOnScroll((ScrollEvent event) -> {
             if (visualizer != null) {
@@ -201,7 +295,6 @@ public class LocationPlanTabController extends BaseTabController {
                 String hoveredLitera = visualizer.findBuildingAt(event.getX(), event.getY(), currentBuildings);
                 visualizer.setHoveredBuilding(hoveredLitera);
                 
-                // Установить курсор в зависимости от режима
                 if (visualizer.getMeasurementTool().isActive()) {
                     buildingCanvas.setCursor(javafx.scene.Cursor.CROSSHAIR);
                 } else {
@@ -215,10 +308,8 @@ public class LocationPlanTabController extends BaseTabController {
         buildingCanvas.setOnMouseClicked(event -> {
             if (event.getButton() != MouseButton.PRIMARY || visualizer == null) return;
             
-            // Режим измерения - передаем РЕАЛЬНЫЕ координаты МСК-67
             if (visualizer.getMeasurementTool().isActive() && !event.isControlDown() && !event.isAltDown()) {
                 double[] localCoords = visualizer.getTransform().canvasToWorld(event.getX(), event.getY());
-                // Преобразуем локальные координаты в реальные МСК-67
                 double realWorldX = localCoords[0] + visualizer.getOriginX();
                 double realWorldY = localCoords[1] + visualizer.getOriginY();
                 
@@ -229,7 +320,6 @@ public class LocationPlanTabController extends BaseTabController {
                 return;
             }
             
-            // Режим выделения здания
             if (!event.isControlDown()) {
                 String clickedLitera = visualizer.findBuildingAt(event.getX(), event.getY(), currentBuildings);
                 
@@ -325,9 +415,6 @@ public class LocationPlanTabController extends BaseTabController {
         });
     }
     
-    /**
-     * 🆕 ЭКСПОРТ: Открыть диалог экспорта и сохранить изображение.
-     */
     @FXML
     private void handleExport() {
         if (currentBuildings == null || currentBuildings.isEmpty()) {
@@ -336,24 +423,20 @@ public class LocationPlanTabController extends BaseTabController {
         }
         
         try {
-            // Создать диалог экспорта
             ExportDialog dialog = new ExportDialog();
             Optional<ExportDialog.ExportSettings> result = dialog.showAndWait();
             
             if (result.isPresent()) {
                 ExportDialog.ExportSettings settings = result.get();
                 
-                // Получить информацию о системе координат и масштабе
                 String coordinateSystem = currentRegion != null ? 
                     "МСК-67 (" + currentRegion + ")" : "МСК-67";
                 
                 String scaleDenominator = scaleComboBox != null && scaleComboBox.getValue() != null ?
                     scaleComboBox.getValue() : "500";
                 
-                // Экспортировать
                 CanvasExporter.export(buildingCanvas, settings, coordinateSystem, scaleDenominator);
                 
-                // Показать уведомление
                 showInfo("Экспорт завершен", 
                     "Ситуационный план сохранен:\n" + settings.getFile().getAbsolutePath());
                 
@@ -365,9 +448,6 @@ public class LocationPlanTabController extends BaseTabController {
         }
     }
     
-    /**
-     * Обработчик изменения видимости сетки.
-     */
     @FXML
     private void handleGridVisibilityChange() {
         if (visualizer != null && gridVisibleCheckBox != null) {
@@ -376,9 +456,6 @@ public class LocationPlanTabController extends BaseTabController {
         }
     }
     
-    /**
-     * Обработчик изменения шага сетки.
-     */
     @FXML
     private void handleGridSizeChange() {
         if (visualizer != null && gridSizeComboBox != null && gridSizeComboBox.getValue() != null) {
@@ -392,9 +469,6 @@ public class LocationPlanTabController extends BaseTabController {
         }
     }
     
-    /**
-     * Обработчик активации инструмента измерения.
-     */
     @FXML
     private void handleMeasurementActiveChange() {
         if (visualizer != null && measurementActiveCheckBox != null) {
@@ -414,9 +488,6 @@ public class LocationPlanTabController extends BaseTabController {
         }
     }
     
-    /**
-     * Обработчик изменения режима измерения.
-     */
     @FXML
     private void handleMeasurementModeChange() {
         if (visualizer != null && measurementModeComboBox != null && measurementModeComboBox.getValue() != null) {
@@ -438,9 +509,6 @@ public class LocationPlanTabController extends BaseTabController {
         }
     }
     
-    /**
-     * Обработчик очистки измерения.
-     */
     @FXML
     private void handleClearMeasurement() {
         if (visualizer != null) {
@@ -451,9 +519,6 @@ public class LocationPlanTabController extends BaseTabController {
         }
     }
     
-    /**
-     * Обновить информацию об измерении.
-     */
     private void updateMeasurementInfo() {
         if (measurementInfoLabel == null || visualizer == null) return;
         
@@ -516,9 +581,6 @@ public class LocationPlanTabController extends BaseTabController {
         measurementInfoLabel.setText(info.toString());
     }
     
-    /**
-     * Сохранить новые координаты точки в БД.
-     */
     private void savePointCoordinates(BuildingVisualizer.PointHandle point) {
         try {
             LocationPlanDTO.BuildingCoordinatesDTO building = currentBuildings.stream()
@@ -630,6 +692,10 @@ public class LocationPlanTabController extends BaseTabController {
             creationDatePicker.setValue(LocalDate.now());
         }
         
+        if (uploadDatePicker != null) {
+            uploadDatePicker.setValue(LocalDate.now());
+        }
+        
         if (currentPassportId != null && saveLocationPlanUseCase != null) {
             loadLocationPlanData();
         }
@@ -704,16 +770,33 @@ public class LocationPlanTabController extends BaseTabController {
             return false;
         }
         
-        if (scaleComboBox == null || scaleComboBox.getValue() == null || scaleComboBox.getValue().isBlank()) {
-            showWarning("Укажите масштаб плана");
-            if (scaleComboBox != null) scaleComboBox.requestFocus();
-            return false;
-        }
+        boolean isManualMode = manualDrawingRadio != null && manualDrawingRadio.isSelected();
         
-        if (creationDatePicker == null || creationDatePicker.getValue() == null) {
-            showWarning("Укажите дату создания плана");
-            if (creationDatePicker != null) creationDatePicker.requestFocus();
-            return false;
+        if (isManualMode) {
+            // Валидация для ручного режима
+            if (scaleComboBox == null || scaleComboBox.getValue() == null || scaleComboBox.getValue().isBlank()) {
+                showWarning("Укажите масштаб плана");
+                if (scaleComboBox != null) scaleComboBox.requestFocus();
+                return false;
+            }
+            
+            if (creationDatePicker == null || creationDatePicker.getValue() == null) {
+                showWarning("Укажите дату создания плана");
+                if (creationDatePicker != null) creationDatePicker.requestFocus();
+                return false;
+            }
+        } else {
+            // Валидация для режима загрузки
+            if (uploadedImageFile == null || uploadedImage == null) {
+                showWarning("Загрузите изображение плана");
+                return false;
+            }
+            
+            if (uploadDatePicker == null || uploadDatePicker.getValue() == null) {
+                showWarning("Укажите дату создания плана");
+                if (uploadDatePicker != null) uploadDatePicker.requestFocus();
+                return false;
+            }
         }
         
         return true;
@@ -721,37 +804,70 @@ public class LocationPlanTabController extends BaseTabController {
     
     @Override
     public void saveData() {
-        if (saveLocationPlanUseCase == null || !validateData()) return;
+        if (!validateData()) return;
+        
+        boolean isManualMode = manualDrawingRadio != null && manualDrawingRadio.isSelected();
         
         try {
-            SaveLocationPlanCommand command = new SaveLocationPlanCommand(
-                currentPassportId,
-                scaleComboBox.getValue(),
-                authorField != null ? authorField.getText() : "",
-                creationDatePicker.getValue(),
-                notesArea != null ? notesArea.getText() : "",
-                null
-            );
-            
-            saveLocationPlanUseCase.execute(command);
-            showInfo("Ситуационный план сохранен");
+            if (isManualMode) {
+                // Сохранить ручной режим
+                SaveLocationPlanCommand command = new SaveLocationPlanCommand(
+                    currentPassportId,
+                    scaleComboBox.getValue(),
+                    authorField != null ? authorField.getText() : "",
+                    creationDatePicker.getValue(),
+                    notesArea != null ? notesArea.getText() : "",
+                    null
+                );
+                
+                saveLocationPlanUseCase.execute(command);
+                showInfo("Ситуационный план сохранен");
+            } else {
+                // Сохранить загруженное изображение
+                byte[] imageBytes = Files.readAllBytes(uploadedImageFile.toPath());
+                
+                UploadPlanImageCommand command = new UploadPlanImageCommand(
+                    currentPassportId,
+                    imageBytes,
+                    uploadDatePicker.getValue(),
+                    uploadNotesArea != null ? uploadNotesArea.getText() : ""
+                );
+                
+                uploadPlanImageUseCase.execute(command);
+                showInfo("Изображение плана сохранено");
+            }
         } catch (Exception e) {
-            showError("Ошибка", e.getMessage());
+            showError("Ошибка сохранения", e.getMessage());
             e.printStackTrace();
         }
     }
     
     @Override
     public void clearData() {
-        if (scaleComboBox != null) scaleComboBox.setValue("500");
-        if (creationDatePicker != null) creationDatePicker.setValue(LocalDate.now());
-        if (authorField != null) authorField.clear();
-        if (notesArea != null) notesArea.clear();
-        if (buildingsListView != null) buildingsListView.getItems().clear();
-        currentBuildings.clear();
-        if (visualizer != null) visualizer.clearSelection();
-        updateSelectionInfo(null);
-        updateVisualization();
+        boolean isManualMode = manualDrawingRadio != null && manualDrawingRadio.isSelected();
+        
+        if (isManualMode) {
+            if (scaleComboBox != null) scaleComboBox.setValue("500");
+            if (creationDatePicker != null) creationDatePicker.setValue(LocalDate.now());
+            if (authorField != null) authorField.clear();
+            if (notesArea != null) notesArea.clear();
+            if (buildingsListView != null) buildingsListView.getItems().clear();
+            currentBuildings.clear();
+            if (visualizer != null) visualizer.clearSelection();
+            updateSelectionInfo(null);
+            updateVisualization();
+        } else {
+            uploadedImageFile = null;
+            uploadedImage = null;
+            if (uploadedImageView != null) uploadedImageView.setImage(null);
+            if (imagePreviewPlaceholder != null) imagePreviewPlaceholder.setVisible(true);
+            if (uploadedFileNameLabel != null) {
+                uploadedFileNameLabel.setText("Файл не выбран");
+                uploadedFileNameLabel.setStyle("-fx-text-fill: #999;");
+            }
+            if (uploadDatePicker != null) uploadDatePicker.setValue(LocalDate.now());
+            if (uploadNotesArea != null) uploadNotesArea.clear();
+        }
     }
     
     @FXML
@@ -890,7 +1006,6 @@ public class LocationPlanTabController extends BaseTabController {
             info.append(String.format("Площадь: %.2f м²\n\n", measurements.area));
         }
         
-        // Отображаем название системы координат
         String coordinateSystemName = currentRegion != null ? 
             ("Координаты (МСК-67, " + currentRegion + "):" +
             "\n") : "Координаты (МСК-67):\n";
