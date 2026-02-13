@@ -11,17 +11,37 @@ import java.util.Objects;
  * Инварианты:
  * - Координаты X и Y не могут быть null
  * - Координаты должны быть валидными числами
+ * 
+ * Архитектурное решение:
+ * - Immutable Value Object
+ * - Factory метод для создания из строк
+ * - Методы для вычисления расстояния
+ * - Форматирование для отображения
  */
 public final class CoordinatePoint {
     
     private final double x;
     private final double y;
     
+    /**
+     * Создать точку координат.
+     * 
+     * @param x координата X (восток)
+     * @param y координата Y (север)
+     * @throws ValidationException если координаты невалидны
+     */
     public CoordinatePoint(double x, double y) {
         this.x = validateCoordinate(x, "X");
         this.y = validateCoordinate(y, "Y");
     }
     
+    /**
+     * Создать точку из строковых значений.
+     * 
+     * @param xStr строковое значение X
+     * @param yStr строковое значение Y
+     * @throws ValidationException если строки не могут быть преобразованы в числа
+     */
     public static CoordinatePoint fromStrings(String xStr, String yStr) {
         if (xStr == null || xStr.isBlank()) {
             throw new ValidationException("Координата X не может быть пустой");
@@ -49,6 +69,9 @@ public final class CoordinatePoint {
         return y;
     }
     
+    /**
+     * Вычислить расстояние до другой точки (в метрах).
+     */
     public double distanceTo(CoordinatePoint other) {
         if (other == null) {
             throw new IllegalArgumentException("Точка не может быть null");
@@ -58,13 +81,21 @@ public final class CoordinatePoint {
         return Math.sqrt(dx * dx + dy * dy);
     }
     
+    /**
+     * Форматировать координату X для отображения.
+     */
     public String formatX() {
         return String.format("%.2f", x);
     }
     
+    /**
+     * Форматировать координату Y для отображения.
+     */
     public String formatY() {
         return String.format("%.2f", y);
     }
+    
+    // === Валидация инвариантов ===
     
     private double validateCoordinate(double value, String name) {
         if (Double.isNaN(value)) {
