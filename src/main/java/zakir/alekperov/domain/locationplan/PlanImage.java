@@ -14,6 +14,12 @@ import java.util.Objects;
  * - Имя файла не может быть пустым
  * - Формат должен быть поддерживаемым (PNG, JPG, JPEG)
  * - Размер не должен превышать 10 МБ
+ * 
+ * Архитектурное решение:
+ * - Immutable Value Object
+ * - Валидация в конструкторе
+ * - Defensive copying для массива байтов
+ * - Нет сеттеров
  */
 public final class PlanImage {
     
@@ -37,6 +43,10 @@ public final class PlanImage {
         this.format = extractFormat(fileName);
     }
     
+    /**
+     * Получить данные изображения.
+     * Возвращает копию для защиты от изменений.
+     */
     public byte[] getImageData() {
         return Arrays.copyOf(imageData, imageData.length);
     }
@@ -53,9 +63,14 @@ public final class PlanImage {
         return imageData.length;
     }
     
+    /**
+     * Получить размер в МБ для отображения.
+     */
     public double getSizeMB() {
         return imageData.length / (1024.0 * 1024.0);
     }
+    
+    // === Валидация инвариантов ===
     
     private byte[] validateImageData(byte[] data) {
         if (data == null || data.length == 0) {
@@ -69,6 +84,7 @@ public final class PlanImage {
             );
         }
         
+        // Defensive copy
         return Arrays.copyOf(data, data.length);
     }
     
