@@ -62,14 +62,15 @@ public class ApplicationLauncher extends Application {
                     return controller;
                 }
                 
-                // LocationPlanTabController
+                // LocationPlanTabController 🆕 С UploadPlanImageUseCase
                 if (controllerClass == LocationPlanTabController.class) {
                     LocationPlanTabController controller = new LocationPlanTabController();
                     controller.setDependencies(
                         dependencyContainer.getSaveLocationPlanUseCase(),
                         dependencyContainer.getLoadLocationPlanUseCase(),
                         dependencyContainer.getAddBuildingCoordinatesUseCase(),
-                        dependencyContainer.getDeleteBuildingUseCase()
+                        dependencyContainer.getDeleteBuildingUseCase(),
+                        dependencyContainer.getUploadPlanImageUseCase()  // 🆕 Добавлено!
                     );
                     dependencyContainer.registerLocationPlanTabController(controller);
                     System.out.println("✓ LocationPlanTabController создан и зарегистрирован в DI");
