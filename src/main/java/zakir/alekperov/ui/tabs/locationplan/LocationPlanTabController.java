@@ -27,6 +27,7 @@ import zakir.alekperov.ui.visualization.MeasurementTool;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -713,6 +714,10 @@ public class LocationPlanTabController extends BaseTabController {
         }
     }
     
+    /**
+     * 🆕 Загружает данные ситуационного плана из БД.
+     * Автоматически определяет режим (ручной/загрузка) и переключает UI.
+     */
     private void loadLocationPlanData() {
         try {
             LoadLocationPlanQuery query = new LoadLocationPlanQuery(currentPassportId);
@@ -721,29 +726,97 @@ public class LocationPlanTabController extends BaseTabController {
             if (planOptional.isPresent()) {
                 LocationPlanDTO plan = planOptional.get();
                 
-                if (scaleComboBox != null) {
-                    scaleComboBox.setValue(String.valueOf(plan.scaleDenominator()));
-                }
-                if (authorField != null) {
-                    authorField.setText(plan.executorName());
-                }
-                if (creationDatePicker != null) {
-                    creationDatePicker.setValue(plan.planDate());
-                }
-                if (notesArea != null) {
-                    notesArea.setText(plan.notes());
-                }
+                // 🆕 Проверяем, есть ли загруженное изображение
+                boolean hasUploadedImage = plan.imagePath() != null && !plan.imagePath().isBlank();
                 
-                currentBuildings = plan.buildings();
-                
-                if (buildingsListView != null) {
-                    buildingsListView.getItems().clear();
-                    for (var building : currentBuildings) {
-                        buildingsListView.getItems().add(new BuildingItem(building));
+                if (hasUploadedImage) {
+                    // === РЕЖИМ ЗАГРУЗКИ ИЗОБРАЖЕНИЯ ===
+                    System.out.println("📷 Обнаружено загруженное изображение: " + plan.imagePath());
+                    
+                    // Переключить режим
+                    if (uploadImageRadio != null) {
+                        uploadImageRadio.setSelected(true);
+                        handleModeChange();
                     }
+                    
+                    // Загрузить изображение из файла
+                    try {
+                        File imageFile = new File(plan.imagePath());
+                        if (imageFile.exists()) {
+                            uploadedImageFile = imageFile;
+                            uploadedImage = new Image(imageFile.toURI().toString());
+                            
+                            if (uploadedImageView != null) {
+                                uploadedImageView.setImage(uploadedImage);
+                            }
+                            
+                            if (imagePreviewPlaceholder != null) {
+                                imagePreviewPlaceholder.setVisible(false);
+                            }
+                            
+                            if (uploadedFileNameLabel != null) {
+                                uploadedFileNameLabel.setText("✅ " + imageFile.getName());
+                                uploadedFileNameLabel.setStyle("-fx-text-fill: #4CAF50; -fx-font-weight: bold;");
+                            }
+                            
+                            System.out.println("✅ Изображение загружено из БД: " + imageFile.getName());
+                        } else {
+                            System.err.println("⚠️ Файл изображения не найден: " + plan.imagePath());
+                            if (uploadedFileNameLabel != null) {
+                                uploadedFileNameLabel.setText("⚠️ Файл не найден: " + imageFile.getName());
+                                uploadedFileNameLabel.setStyle("-fx-text-fill: #FF9800;");
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("⚠️ Ошибка загрузки изображения: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                    
+                    // Заполнить поля для режима загрузки
+                    if (uploadDatePicker != null) {
+                        uploadDatePicker.setValue(plan.planDate());
+                    }
+                    if (uploadNotesArea != null) {
+                        uploadNotesArea.setText(plan.notes());
+                    }
+                    
+                } else {
+                    // === РЕЖИМ РУЧНОГО РИСОВАНИЯ ===
+                    System.out.println("✏️ Режим ручного рисования");
+                    
+                    // Переключить режим
+                    if (manualDrawingRadio != null) {
+                        manualDrawingRadio.setSelected(true);
+                        handleModeChange();
+                    }
+                    
+                    // Заполнить поля для ручного режима
+                    if (scaleComboBox != null) {
+                        scaleComboBox.setValue(String.valueOf(plan.scaleDenominator()));
+                    }
+                    if (authorField != null) {
+                        authorField.setText(plan.executorName());
+                    }
+                    if (creationDatePicker != null) {
+                        creationDatePicker.setValue(plan.planDate());
+                    }
+                    if (notesArea != null) {
+                        notesArea.setText(plan.notes());
+                    }
+                    
+                    // Загрузить здания и обновить визуализацию
+                    currentBuildings = plan.buildings();
+                    
+                    if (buildingsListView != null) {
+                        buildingsListView.getItems().clear();
+                        for (var building : currentBuildings) {
+                            buildingsListView.getItems().add(new BuildingItem(building));
+                        }
+                    }
+                    
+                    updateVisualization();
                 }
                 
-                updateVisualization();
                 System.out.println("✓ Данные ситуационного плана загружены");
             } else {
                 System.out.println("ℹ️ Ситуационный план не найден");
