@@ -1,163 +1,125 @@
 package zakir.alekperov.bootstrap;
 
-import zakir.alekperov.domain.shared.PassportId;
 import zakir.alekperov.domain.locationplan.*;
-import zakir.alekperov.infrastructure.database.*;
-import zakir.alekperov.infrastructure.persistence.locationplan.*;
+import zakir.alekperov.domain.shared.PassportId;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
-/**
- * Утилита для создания тестовых данных.
- */
-public class TestDataCreator {
+public final class TestDataCreator {
+    private final LocationPlanRepository locationPlanRepository;
     
-    public static void main(String[] args) {
-        System.out.println("╔═══════════════════════════════════════╗");
-        System.out.println("║  Создание тестовых данных             ║");
-        System.out.println("╚═══════════════════════════════════════╝");
+    public TestDataCreator(LocationPlanRepository locationPlanRepository) {
+        this.locationPlanRepository = locationPlanRepository;
+    }
+    
+    public void createTestLocationPlan() {
+        System.out.println("\n=== Создание тестового ситуационного плана ===");
         
-        // Инициализация инфраструктуры
-        DatabaseConnection dbConnection = new DatabaseConnection(null);
-        TransactionTemplate transactionTemplate = new TransactionTemplate(dbConnection);
+        PassportId testPassportId = PassportId.fromString("TEST-PASSPORT-001");
         
-        // Инициализация БД
-        try {
-            DatabaseMigration migration = new DatabaseMigration(dbConnection);
-            migration.migrate();
-            System.out.println("✓ База данных инициализирована");
-        } catch (Exception e) {
-            System.err.println("✗ Ошибка миграции: " + e.getMessage());
-            e.printStackTrace();
+        Optional<LocationPlan> existingPlan = locationPlanRepository.findById(testPassportId);
+        if (existingPlan.isPresent()) {
+            System.out.println("⚠️  Тестовый план уже существует, пропускаем создание");
             return;
         }
         
-        // Создание репозитория
-        LocationPlanRepository repository = new LocationPlanRepositoryImpl(transactionTemplate);
-        
-        // Создание тестового паспорта ID
-        PassportId passportId = PassportId.fromString("test-passport-001");
-        
-        System.out.println("\n→ Создание ситуационного плана...");
-        
-        // Создание ситуационного плана
-        LocationPlan plan = LocationPlan.create(
-            passportId,
-            PlanScale.fromDenominator(500),
-            "Иванов И.И."
-        );
-        
-        plan.updatePlanDate(LocalDate.of(2026, 2, 11));
-        plan.updateNotes("Тестовый ситуационный план для демонстрации системы.\nСоздан автоматически.");
-        
-        System.out.println("  Паспорт ID: " + passportId.getValue());
-        System.out.println("  Масштаб: " + plan.getScale().format());
-        System.out.println("  Исполнитель: " + plan.getExecutorName());
-        
-        // Добавление координат здания A
-        System.out.println("\n→ Добавление координат здания A...");
-        List<CoordinatePoint> pointsA = List.of(
-            CoordinatePoint.of(BigDecimal.valueOf(10.50), BigDecimal.valueOf(20.30)),
-            CoordinatePoint.of(BigDecimal.valueOf(30.50), BigDecimal.valueOf(20.30)),
-            CoordinatePoint.of(BigDecimal.valueOf(30.50), BigDecimal.valueOf(40.70)),
-            CoordinatePoint.of(BigDecimal.valueOf(10.50), BigDecimal.valueOf(40.70))
-        );
-        
-        BuildingCoordinates buildingA = BuildingCoordinates.create(
-            "A",
-            "Жилой дом (основной корпус)",
-            pointsA
-        );
-        
-        plan.addBuildingCoordinates(buildingA);
-        System.out.println("  Литера: A");
-        System.out.println("  Точек: " + pointsA.size());
-        
-        // Добавление координат здания Б
-        System.out.println("\n→ Добавление координат здания Б...");
-        List<CoordinatePoint> pointsB = List.of(
-            CoordinatePoint.of(BigDecimal.valueOf(50.00), BigDecimal.valueOf(15.00)),
-            CoordinatePoint.of(BigDecimal.valueOf(65.00), BigDecimal.valueOf(15.00)),
-            CoordinatePoint.of(BigDecimal.valueOf(65.00), BigDecimal.valueOf(35.00)),
-            CoordinatePoint.of(BigDecimal.valueOf(50.00), BigDecimal.valueOf(35.00))
-        );
-        
-        BuildingCoordinates buildingB = BuildingCoordinates.create(
-            "Б",
-            "Хозяйственная постройка",
-            pointsB
-        );
-        
-        plan.addBuildingCoordinates(buildingB);
-        System.out.println("  Литера: Б");
-        System.out.println("  Точек: " + pointsB.size());
-        
-        // Добавление координат здания В
-        System.out.println("\n→ Добавление координат здания В...");
-        List<CoordinatePoint> pointsV = List.of(
-            CoordinatePoint.of(BigDecimal.valueOf(70.00), BigDecimal.valueOf(10.00)),
-            CoordinatePoint.of(BigDecimal.valueOf(85.00), BigDecimal.valueOf(10.00)),
-            CoordinatePoint.of(BigDecimal.valueOf(85.00), BigDecimal.valueOf(25.00)),
-            CoordinatePoint.of(BigDecimal.valueOf(70.00), BigDecimal.valueOf(25.00))
-        );
-        
-        BuildingCoordinates buildingV = BuildingCoordinates.create(
-            "В",
-            "Гараж",
-            pointsV
-        );
-        
-        plan.addBuildingCoordinates(buildingV);
-        System.out.println("  Литера: В");
-        System.out.println("  Точек: " + pointsV.size());
-        
-        // Сохранение
-        System.out.println("\n→ Сохранение в базу данных...");
         try {
-            repository.save(plan);
-            System.out.println("✓ Ситуационный план сохранен успешно");
-        } catch (Exception e) {
-            System.err.println("✗ Ошибка сохранения: " + e.getMessage());
-            e.printStackTrace();
-            return;
-        }
-        
-        // Проверка загрузки
-        System.out.println("\n→ Проверка загрузки из БД...");
-        try {
-            var loadedPlan = repository.findByPassportId(passportId);
-            if (loadedPlan.isPresent()) {
-                LocationPlan loaded = loadedPlan.get();
-                System.out.println("✓ План загружен успешно");
-                System.out.println("  ID: " + loaded.getPassportId());
-                System.out.println("  Масштаб: " + loaded.getScale().format());
-                System.out.println("  Зданий: " + loaded.getBuildingsCount());
-                System.out.println("  Исполнитель: " + loaded.getExecutorName());
-                System.out.println("  Дата: " + loaded.getPlanDate());
-                
-                System.out.println("\n  Здания:");
-                for (BuildingCoordinates building : loaded.getBuildingsCoordinates()) {
-                    System.out.println("    - Литера " + building.getLitera() + 
-                        ": " + building.getDescription() + 
-                        " (" + building.getPointsCount() + " точек)");
-                }
-            } else {
-                System.err.println("✗ План не найден после сохранения!");
+            PlanScale scale = new PlanScale(500);
+            LocationPlan plan = LocationPlan.createManualDrawing(
+                testPassportId,
+                scale,
+                "Иванов И.И.",
+                LocalDate.now(),
+                "Тестовый ситуационный план для демонстрации"
+            );
+            
+            System.out.println("✅ Создан план: " + testPassportId.getValue());
+            System.out.println("   Масштаб: " + scale.toDisplayString());
+            
+            addTestBuilding_A(plan);
+            addTestBuilding_B(plan);
+            addTestBuilding_C(plan);
+            
+            locationPlanRepository.save(plan);
+            
+            System.out.println("✅ Тестовые данные сохранены!");
+            
+            Optional<LocationPlan> loaded = locationPlanRepository.findById(testPassportId);
+            if (loaded.isPresent()) {
+                System.out.println("\n✅ Проверка: план успешно загружен из БД");
+                System.out.println("   Масштаб: " + loaded.get().getScale().map(PlanScale::toDisplayString).orElse("N/A"));
+                System.out.println("   Зданий: " + loaded.get().getBuildings().size());
             }
+            
+            System.out.println("\n👉 Детали зданий:");
+            for (BuildingCoordinates building : loaded.get().getBuildings()) {
+                System.out.println("   • Литера " + building.getLitera().value() + 
+                    ": " + building.getDescription() + 
+                    " (" + building.getPoints().size() + " точек)");
+            }
+            
         } catch (Exception e) {
-            System.err.println("✗ Ошибка загрузки: " + e.getMessage());
+            System.err.println("❌ Ошибка создания тестовых данных: " + e.getMessage());
             e.printStackTrace();
-        } finally {
-            dbConnection.close();
         }
+    }
+    
+    private void addTestBuilding_A(LocationPlan plan) {
+        List<CoordinatePoint> points = List.of(
+            new CoordinatePoint(10.0, 10.0),
+            new CoordinatePoint(30.0, 10.0),
+            new CoordinatePoint(30.0, 20.0),
+            new CoordinatePoint(10.0, 20.0)
+        );
         
-        System.out.println("\n╔═══════════════════════════════════════╗");
-        System.out.println("║  Тестовые данные созданы успешно!     ║");
-        System.out.println("║  ID паспорта: test-passport-001       ║");
-        System.out.println("╚═══════════════════════════════════════╝");
-        System.out.println("\nТеперь можете запустить приложение:");
-        System.out.println("  mvn javafx:run");
+        BuildingLitera litera = new BuildingLitera("А");
+        BuildingCoordinates building = new BuildingCoordinates(
+            litera,
+            "Административное здание",
+            points
+        );
+        
+        plan.addBuilding(building);
+        System.out.println("   + Добавлено здание литера А (" + points.size() + " точек)");
+    }
+    
+    private void addTestBuilding_B(LocationPlan plan) {
+        List<CoordinatePoint> points = List.of(
+            new CoordinatePoint(40.0, 10.0),
+            new CoordinatePoint(60.0, 10.0),
+            new CoordinatePoint(60.0, 25.0),
+            new CoordinatePoint(40.0, 25.0)
+        );
+        
+        BuildingLitera litera = new BuildingLitera("Б");
+        BuildingCoordinates building = new BuildingCoordinates(
+            litera,
+            "Производственный корпус",
+            points
+        );
+        
+        plan.addBuilding(building);
+        System.out.println("   + Добавлено здание литера Б (" + points.size() + " точек)");
+    }
+    
+    private void addTestBuilding_C(LocationPlan plan) {
+        List<CoordinatePoint> points = List.of(
+            new CoordinatePoint(10.0, 30.0),
+            new CoordinatePoint(25.0, 30.0),
+            new CoordinatePoint(25.0, 40.0),
+            new CoordinatePoint(10.0, 40.0)
+        );
+        
+        BuildingLitera litera = new BuildingLitera("В");
+        BuildingCoordinates building = new BuildingCoordinates(
+            litera,
+            "Складское помещение",
+            points
+        );
+        
+        plan.addBuilding(building);
+        System.out.println("   + Добавлено здание литера В (" + points.size() + " точек)");
     }
 }
