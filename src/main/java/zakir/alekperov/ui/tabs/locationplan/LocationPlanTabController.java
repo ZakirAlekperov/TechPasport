@@ -900,9 +900,11 @@ public class LocationPlanTabController extends BaseTabController {
                 // Сохранить загруженное изображение
                 byte[] imageBytes = Files.readAllBytes(uploadedImageFile.toPath());
                 
+                // 🔧 FIX: добавлен fileName
                 UploadPlanImageCommand command = new UploadPlanImageCommand(
                     currentPassportId,
                     imageBytes,
+                    uploadedImageFile.getName(),  // 🆕 Добавлено!
                     uploadDatePicker.getValue(),
                     uploadNotesArea != null ? uploadNotesArea.getText() : ""
                 );
