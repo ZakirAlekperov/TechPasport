@@ -2,116 +2,203 @@ package zakir.alekperov.domain.locationplan;
 
 import zakir.alekperov.domain.shared.PassportId;
 import zakir.alekperov.domain.shared.ValidationException;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
+/**
+ * Ситуационный план здания.
+ * Поддерживает два режима: ручное рисование и загруженное изображение.
+ * 
+ * Инварианты:
+ * - PassportId не может быть null
+ * - PlanMode не может быть null
+ * - В режиме MANUAL_DRAWING должен быть масштаб и исполнитель
+ * - В режиме UPLOADED_IMAGE должно быть изображение
+ * - Нельзя одновременно иметь изображение и координаты зданий
+ */
 public final class LocationPlan {
-    private final PassportId passportId;
-    private PlanScale scale;
-    private final List<BuildingCoordinates> buildingsCoordinates;
-    private String executorName;
-    private LocalDate planDate;
-    private String notes;
-    private String imagePath;
     
-    private LocationPlan(PassportId passportId, PlanScale scale, List<BuildingCoordinates> buildingsCoordinates,
-                        String executorName, LocalDate planDate, String notes, String imagePath) {
-        if (passportId == null) {
-            throw new ValidationException("ID паспорта не может быть null");
-        }
-        if (scale == null) {
-            throw new ValidationException("Масштаб плана не может быть null");
-        }
-        if (planDate == null) {
-            planDate = LocalDate.now();
+    private final PassportId passportId;
+    private final PlanMode mode;
+    private final PlanScale scale;
+    private final String executorName;
+    private final LocalDate planDate;
+    private final String notes;
+    private final List<BuildingCoordinates> buildings;
+    private final PlanImage uploadedImage;
+    
+    /**
+     * Создать ситуационный план в режиме ручного рисования.
+     */
+    public static LocationPlan createManualDrawing(
+            PassportId passportId,
+            PlanScale scale,
+            String executorName,
+            LocalDate planDate,
+            String notes) {
+        
+        return new LocationPlan(
+            passportId,
+            PlanMode.MANUAL_DRAWING,
+            scale,
+            executorName,
+            planDate,
+            notes,
+            new ArrayList<>(),
+            null
+        );
+    }
+    
+    /**
+     * Создать ситуационный план с загруженным изображением.
+     */
+    public static LocationPlan createWithUploadedImage(
+            PassportId passportId,
+            PlanImage uploadedImage,
+            LocalDate planDate,
+            String notes) {
+        
+        return new LocationPlan(
+            passportId,
+            PlanMode.UPLOADED_IMAGE,
+            null,
+            null,
+            planDate,
+            notes,
+            new ArrayList<>(),
+            uploadedImage
+        );
+    }
+    
+    /**
+     * Восстановить план из хранилища.
+     */
+    public LocationPlan(
+            PassportId passportId,
+            PlanMode mode,
+            PlanScale scale,
+            String executorName,
+            LocalDate planDate,
+            String notes,
+            List<BuildingCoordinates> buildings,
+            PlanImage uploadedImage) {
+        
+        this.passportId = validatePassportId(passportId);
+        this.mode = validateMode(mode);
+        this.planDate = validatePlanDate(planDate);
+        this.notes = notes != null ? notes : "";
+        
+        if (mode == PlanMode.MANUAL_DRAWING) {
+            this.scale = validateScale(scale);
+            this.executorName = validateExecutorName(executorName);
+            this.buildings = new ArrayList<>(buildings != null ? buildings : new ArrayList<>());
+            this.uploadedImage = null;
+            
+        } else { // UPLOADED_IMAGE
+            this.scale = scale;
+            this.executorName = executorName;
+            this.buildings = new ArrayList<>();
+            this.uploadedImage = validateUploadedImage(uploadedImage);
         }
         
-        this.passportId = passportId;
-        this.scale = scale;
-        this.buildingsCoordinates = buildingsCoordinates != null ? new ArrayList<>(buildingsCoordinates) : new ArrayList<>();
-        this.executorName = executorName != null ? executorName : "";
-        this.planDate = planDate;
-        this.notes = notes != null ? notes : "";
-        this.imagePath = imagePath;
+        validateModeConsistency();
     }
     
-    public static LocationPlan create(PassportId passportId, PlanScale scale, String executorName) {
-        return new LocationPlan(passportId, scale, new ArrayList<>(), executorName, LocalDate.now(), "", null);
-    }
-    
-    public static LocationPlan restore(PassportId passportId, PlanScale scale, List<BuildingCoordinates> buildings,
-                                      String executorName, LocalDate planDate, String notes, String imagePath) {
-        return new LocationPlan(passportId, scale, buildings, executorName, planDate, notes, imagePath);
-    }
-    
-    public void updateScale(PlanScale newScale) {
-        if (newScale == null) {
-            throw new ValidationException("Масштаб не может быть null");
+    /**
+     * Добавить координаты здания (только для режима MANUAL_DRAWING).
+     */
+    public void addBuilding(BuildingCoordinates buildingCoordinates) {
+        if (mode != PlanMode.MANUAL_DRAWING) {
+            throw new ValidationException(
+                "Нельзя добавлять координаты зданий в режиме загруженного изображения"
+            );
         }
-        this.scale = newScale;
-    }
-    
-    public void updateExecutor(String executorName) {
-        this.executorName = executorName != null ? executorName : "";
-    }
-    
-    public void updatePlanDate(LocalDate planDate) {
-        if (planDate == null) {
-            throw new ValidationException("Дата плана не может быть null");
-        }
-        this.planDate = planDate;
-    }
-    
-    public void updateNotes(String notes) {
-        this.notes = notes != null ? notes : "";
-    }
-    
-    public void setImagePath(String imagePath) {
-        this.imagePath = imagePath;
-    }
-    
-    public void addBuildingCoordinates(BuildingCoordinates coordinates) {
-        if (coordinates == null) {
+        
+        if (buildingCoordinates == null) {
             throw new ValidationException("Координаты здания не могут быть null");
         }
         
-        // Проверка на дубликат литеры
-        for (BuildingCoordinates existing : buildingsCoordinates) {
-            if (existing.getLitera().equals(coordinates.getLitera())) {
-                throw new ValidationException("Здание с литерой " + coordinates.getLitera() + " уже существует");
-            }
+        if (hasBuildingWithLitera(buildingCoordinates.getLitera())) {
+            throw new ValidationException(
+                "Здание с литерой '" + buildingCoordinates.getLitera().getValue() + "' уже существует"
+            );
         }
         
-        buildingsCoordinates.add(coordinates);
+        this.buildings.add(buildingCoordinates);
     }
     
-    public void removeBuildingCoordinates(String litera) {
-        buildingsCoordinates.removeIf(b -> b.getLitera().equals(litera));
+    /**
+     * Удалить здание по литере.
+     */
+    public void removeBuilding(BuildingLitera litera) {
+        if (mode != PlanMode.MANUAL_DRAWING) {
+            throw new ValidationException(
+                "Нельзя удалять координаты зданий в режиме загруженного изображения"
+            );
+        }
+        
+        if (litera == null) {
+            throw new ValidationException("Литера не может быть null");
+        }
+        
+        boolean removed = buildings.removeIf(b -> b.getLitera().equals(litera));
+        
+        if (!removed) {
+            throw new ValidationException(
+                "Здание с литерой '" + litera.getValue() + "' не найдено"
+            );
+        }
     }
     
-    // Getters
+    public boolean hasBuildingWithLitera(BuildingLitera litera) {
+        if (litera == null || mode != PlanMode.MANUAL_DRAWING) {
+            return false;
+        }
+        return buildings.stream()
+            .anyMatch(b -> b.getLitera().equals(litera));
+    }
+    
+    /**
+     * Проверить, является ли план ручным рисованием.
+     */
+    public boolean isManualDrawing() {
+        return mode == PlanMode.MANUAL_DRAWING;
+    }
+    
+    /**
+     * Проверить, является ли план загруженным изображением.
+     */
+    public boolean isUploadedImage() {
+        return mode == PlanMode.UPLOADED_IMAGE;
+    }
+    
+    public List<BuildingCoordinates> getBuildings() {
+        return Collections.unmodifiableList(buildings);
+    }
+    
+    public Optional<PlanImage> getUploadedImage() {
+        return Optional.ofNullable(uploadedImage);
+    }
     
     public PassportId getPassportId() {
         return passportId;
     }
     
-    public PlanScale getScale() {
-        return scale;
+    public PlanMode getMode() {
+        return mode;
     }
     
-    public List<BuildingCoordinates> getBuildingsCoordinates() {
-        return Collections.unmodifiableList(buildingsCoordinates);
+    public Optional<PlanScale> getScale() {
+        return Optional.ofNullable(scale);
     }
     
-    public int getBuildingsCount() {
-        return buildingsCoordinates.size();
-    }
-    
-    public String getExecutorName() {
-        return executorName;
+    public Optional<String> getExecutorName() {
+        return Optional.ofNullable(executorName);
     }
     
     public LocalDate getPlanDate() {
@@ -122,8 +209,65 @@ public final class LocationPlan {
         return notes;
     }
     
-    public String getImagePath() {
-        return imagePath;
+    // === Валидация инвариантов ===
+    
+    private PassportId validatePassportId(PassportId id) {
+        if (id == null) {
+            throw new ValidationException("ID паспорта не может быть null");
+        }
+        return id;
+    }
+    
+    private PlanMode validateMode(PlanMode mode) {
+        if (mode == null) {
+            throw new ValidationException("Режим плана не может быть null");
+        }
+        return mode;
+    }
+    
+    private PlanScale validateScale(PlanScale scale) {
+        if (scale == null) {
+            throw new ValidationException("Масштаб плана не может быть null для режима ручного рисования");
+        }
+        return scale;
+    }
+    
+    private String validateExecutorName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new ValidationException("ФИО исполнителя не может быть пустым для режима ручного рисования");
+        }
+        return name.trim();
+    }
+    
+    private LocalDate validatePlanDate(LocalDate date) {
+        if (date == null) {
+            throw new ValidationException("Дата составления плана не может быть null");
+        }
+        if (date.isAfter(LocalDate.now())) {
+            throw new ValidationException("Дата составления плана не может быть в будущем");
+        }
+        return date;
+    }
+    
+    private PlanImage validateUploadedImage(PlanImage image) {
+        if (image == null) {
+            throw new ValidationException("Изображение плана не может быть null для режима загруженного изображения");
+        }
+        return image;
+    }
+    
+    private void validateModeConsistency() {
+        if (mode == PlanMode.MANUAL_DRAWING && uploadedImage != null) {
+            throw new ValidationException(
+                "В режиме ручного рисования не может быть загруженного изображения"
+            );
+        }
+        
+        if (mode == PlanMode.UPLOADED_IMAGE && !buildings.isEmpty()) {
+            throw new ValidationException(
+                "В режиме загруженного изображения не может быть координат зданий"
+            );
+        }
     }
     
     @Override
@@ -141,6 +285,11 @@ public final class LocationPlan {
     
     @Override
     public String toString() {
-        return "LocationPlan{passportId=" + passportId + ", scale=" + scale + ", buildings=" + buildingsCoordinates.size() + "}";
+        return "LocationPlan{" +
+               "passportId=" + passportId +
+               ", mode=" + mode +
+               ", buildingsCount=" + buildings.size() +
+               ", hasImage=" + (uploadedImage != null) +
+               '}';
     }
 }
