@@ -91,13 +91,16 @@ public final class DatabaseMigration {
         System.out.println("Применение миграции 002: Создание таблиц ситуационных планов");
         
         String sql = """
-            CREATE TABLE IF NOT EXISTS location_plans (
+            CREATE TABLE IF NOT EXISTS location_plan (
                 passport_id TEXT PRIMARY KEY,
-                scale_denominator INTEGER NOT NULL,
+                plan_mode TEXT NOT NULL DEFAULT 'MANUAL_DRAWING' CHECK (plan_mode IN ('MANUAL_DRAWING', 'UPLOADED_IMAGE')),
+                scale_denominator INTEGER,
                 executor_name TEXT,
                 plan_date TEXT NOT NULL,
                 notes TEXT,
-                image_path TEXT,
+                uploaded_image_data BLOB,
+                uploaded_image_filename TEXT,
+                uploaded_image_format TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (passport_id) REFERENCES passports(id) ON DELETE CASCADE
@@ -108,25 +111,18 @@ public final class DatabaseMigration {
                 passport_id TEXT NOT NULL,
                 litera TEXT NOT NULL,
                 description TEXT,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (passport_id) REFERENCES passports(id) ON DELETE CASCADE,
-                UNIQUE(passport_id, litera)
+                point_index INTEGER NOT NULL,
+                x_coordinate REAL NOT NULL,
+                y_coordinate REAL NOT NULL,
+                FOREIGN KEY (passport_id) REFERENCES location_plan(passport_id) ON DELETE CASCADE
             );
             
-            CREATE TABLE IF NOT EXISTS coordinate_points (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                building_coordinates_id INTEGER NOT NULL,
-                point_number INTEGER NOT NULL,
-                x TEXT NOT NULL,
-                y TEXT NOT NULL,
-                FOREIGN KEY (building_coordinates_id) REFERENCES building_coordinates(id) ON DELETE CASCADE,
-                UNIQUE(building_coordinates_id, point_number)
-            );
-            
+            CREATE INDEX IF NOT EXISTS idx_location_plan_mode 
+                ON location_plan(plan_mode);
             CREATE INDEX IF NOT EXISTS idx_building_coordinates_passport 
                 ON building_coordinates(passport_id);
-            CREATE INDEX IF NOT EXISTS idx_coordinate_points_building 
-                ON coordinate_points(building_coordinates_id);
+            CREATE INDEX IF NOT EXISTS idx_building_coordinates_litera 
+                ON building_coordinates(passport_id, litera);
             
             INSERT INTO schema_version (version, description) 
             VALUES (2, 'Создание таблиц ситуационных планов');
