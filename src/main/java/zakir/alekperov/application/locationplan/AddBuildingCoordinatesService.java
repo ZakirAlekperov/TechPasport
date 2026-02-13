@@ -15,26 +15,26 @@ public final class AddBuildingCoordinatesService implements AddBuildingCoordinat
     
     @Override
     public void execute(AddBuildingCoordinatesCommand command) {
-        PassportId passportId = PassportId.fromString(command.passportId());
+        PassportId passportId = PassportId.fromString(command.getPassportId());
         
-        Optional<LocationPlan> planOptional = locationPlanRepository.findById(passportId);
+        Optional<LocationPlan> planOptional = locationPlanRepository.findByPassportId(passportId);
         if (planOptional.isEmpty()) {
-            throw new IllegalStateException("План не найден для passpor_id: " + command.passportId());
+            throw new IllegalStateException("План не найден для passport_id: " + command.getPassportId());
         }
         
         LocationPlan plan = planOptional.get();
         
-        List<CoordinatePoint> points = command.points().stream()
+        List<CoordinatePoint> points = command.getPoints().stream()
             .map(p -> new CoordinatePoint(
                 Double.parseDouble(p.x()),
                 Double.parseDouble(p.y())
             ))
             .collect(Collectors.toList());
         
-        BuildingLitera litera = new BuildingLitera(command.litera());
+        BuildingLitera litera = new BuildingLitera(command.getLitera());
         BuildingCoordinates buildingCoordinates = new BuildingCoordinates(
             litera,
-            command.description(),
+            command.getDescription(),
             points
         );
         

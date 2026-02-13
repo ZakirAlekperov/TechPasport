@@ -16,37 +16,33 @@ public final class SaveLocationPlanService implements SaveLocationPlanUseCase {
     
     @Override
     public void execute(SaveLocationPlanCommand command) {
-        PassportId passportId = PassportId.fromString(command.passportId());
-        PlanScale scale = new PlanScale(Integer.parseInt(command.scaleDenominator()));
+        PassportId passportId = PassportId.fromString(command.getPassportId());
+        PlanScale scale = new PlanScale(Integer.parseInt(command.getScaleDenominator()));
         
-        Optional<LocationPlan> existingPlanOpt = locationPlanRepository.findById(passportId);
+        Optional<LocationPlan> existingPlanOpt = locationPlanRepository.findByPassportId(passportId);
         
         LocationPlan plan;
         if (existingPlanOpt.isPresent()) {
             plan = existingPlanOpt.get();
-            // Для существующего плана нужно пересоздать с новыми параметрами
-            // так как LocationPlan - immutable aggregate
             if (plan.isManualDrawing()) {
                 plan = LocationPlan.createManualDrawing(
                     passportId,
                     scale,
-                    command.executorName(),
-                    command.planDate(),
-                    command.notes()
+                    command.getExecutorName(),
+                    command.getPlanDate(),
+                    command.getNotes()
                 );
-                // Восстановим здания
                 for (var building : existingPlanOpt.get().getBuildings()) {
                     plan.addBuilding(building);
                 }
             }
-            // Для UPLOADED_IMAGE оставляем как есть
         } else {
             plan = LocationPlan.createManualDrawing(
                 passportId,
                 scale,
-                command.executorName(),
-                command.planDate(),
-                command.notes()
+                command.getExecutorName(),
+                command.getPlanDate(),
+                command.getNotes()
             );
         }
         

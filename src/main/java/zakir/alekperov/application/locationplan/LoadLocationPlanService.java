@@ -16,9 +16,9 @@ public final class LoadLocationPlanService implements LoadLocationPlanUseCase {
     
     @Override
     public Optional<LocationPlanDTO> execute(LoadLocationPlanQuery query) {
-        PassportId passportId = PassportId.fromString(query.passportId());
+        PassportId passportId = PassportId.fromString(query.getPassportId());
         
-        Optional<LocationPlan> planOptional = locationPlanRepository.findById(passportId);
+        Optional<LocationPlan> planOptional = locationPlanRepository.findByPassportId(passportId);
         
         return planOptional.map(plan -> {
             List<LocationPlanDTO.BuildingCoordinatesDTO> buildingDTOs = plan.getBuildings().stream()
@@ -26,7 +26,7 @@ public final class LoadLocationPlanService implements LoadLocationPlanUseCase {
                 .collect(Collectors.toList());
             
             int scaleDenominator = plan.getScale()
-                .map(PlanScale::denominator)
+                .map(PlanScale::getDenominator)
                 .orElse(500);
             
             String executorName = plan.getExecutorName().orElse("");
@@ -46,13 +46,13 @@ public final class LoadLocationPlanService implements LoadLocationPlanUseCase {
     private LocationPlanDTO.BuildingCoordinatesDTO toBuildingDTO(BuildingCoordinates building) {
         List<LocationPlanDTO.CoordinatePointDTO> pointDTOs = building.getPoints().stream()
             .map(p -> new LocationPlanDTO.CoordinatePointDTO(
-                String.valueOf(p.x()),
-                String.valueOf(p.y())
+                String.valueOf(p.getX()),
+                String.valueOf(p.getY())
             ))
             .collect(Collectors.toList());
         
         return new LocationPlanDTO.BuildingCoordinatesDTO(
-            building.getLitera().value(),
+            building.getLitera().getValue(),
             building.getDescription(),
             pointDTOs
         );

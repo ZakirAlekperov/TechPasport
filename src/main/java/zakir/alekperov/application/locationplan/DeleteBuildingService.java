@@ -23,22 +23,22 @@ public final class DeleteBuildingService implements DeleteBuildingUseCase {
             throw new IllegalArgumentException("Команда не может быть null");
         }
         
-        PassportId passportId = PassportId.fromString(command.passportId());
+        PassportId passportId = PassportId.fromString(command.getPassportId());
         
-        Optional<LocationPlan> planOptional = locationPlanRepository.findById(passportId);
+        Optional<LocationPlan> planOptional = locationPlanRepository.findByPassportId(passportId);
         if (planOptional.isEmpty()) {
-            throw new IllegalStateException("План не найден для passport_id: " + command.passportId());
+            throw new IllegalStateException("План не найден для passport_id: " + command.getPassportId());
         }
         
         LocationPlan plan = planOptional.get();
         
-        BuildingLitera litera = new BuildingLitera(command.litera());
+        BuildingLitera litera = new BuildingLitera(command.getLitera());
         boolean found = plan.getBuildings().stream()
             .anyMatch(b -> b.getLitera().equals(litera));
         
         if (!found) {
             throw new IllegalStateException(
-                "Здание с литерой '" + command.litera() + "' не найдено в плане"
+                "Здание с литерой '" + command.getLitera() + "' не найдено в плане"
             );
         }
         
