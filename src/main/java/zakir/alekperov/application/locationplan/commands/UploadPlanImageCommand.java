@@ -4,13 +4,13 @@ import java.time.LocalDate;
 
 /**
  * Команда для загрузки изображения ситуационного плана.
+ * 
  * Immutable DTO для передачи данных от UI к Application слою.
  * 
- * Контракт:
- * - Все поля финальные (неизменяемые)
- * - Нет бизнес-логики
- * - Нет валидации (валидация в domain модели)
- * - Простая сериализация данных
+ * Архитектурное решение:
+ * - Record для неизменяемости
+ * - Проверка null в компактном конструкторе
+ * - Нет бизнес-логики (валидация в domain)
  */
 public record UploadPlanImageCommand(
     String passportId,
@@ -19,15 +19,8 @@ public record UploadPlanImageCommand(
     LocalDate planDate,
     String notes
 ) {
-    
     /**
-     * Создать команду.
-     * 
-     * @param passportId ID технического паспорта (строка)
-     * @param imageData байты изображения
-     * @param fileName имя файла изображения
-     * @param planDate дата составления плана
-     * @param notes примечания (может быть null)
+     * Компактный конструктор record - проверка null для обязательных полей.
      */
     public UploadPlanImageCommand {
         if (passportId == null) {
