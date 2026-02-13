@@ -1,58 +1,55 @@
 package zakir.alekperov.application.locationplan;
 
+import zakir.alekperov.domain.locationplan.LocationPlan;
+import zakir.alekperov.domain.locationplan.LocationPlanRepository;
+import zakir.alekperov.domain.locationplan.PlanScale;
 import zakir.alekperov.domain.shared.PassportId;
-import zakir.alekperov.domain.shared.ValidationException;
-import zakir.alekperov.domain.locationplan.*;
+
+import java.util.Optional;
 
 public final class SaveLocationPlanService implements SaveLocationPlanUseCase {
     private final LocationPlanRepository locationPlanRepository;
     
     public SaveLocationPlanService(LocationPlanRepository locationPlanRepository) {
-        if (locationPlanRepository == null) {
-            throw new IllegalArgumentException("LocationPlanRepository не может быть null");
-        }
         this.locationPlanRepository = locationPlanRepository;
     }
     
     @Override
     public void execute(SaveLocationPlanCommand command) {
-        validateCommand(command);
+        PassportId passportId = PassportId.fromString(command.passportId());
+        PlanScale scale = new PlanScale(Integer.parseInt(command.scaleDenominator()));
         
-        PassportId passportId = PassportId.fromString(command.getPassportId());
-        PlanScale scale = PlanScale.fromString(command.getScaleDenominator());
+        Optional<LocationPlan> existingPlanOpt = locationPlanRepository.findById(passportId);
         
-        boolean planExists = locationPlanRepository.existsByPassportId(passportId);
-        
-        if (planExists) {
-            LocationPlan existingPlan = locationPlanRepository.findByPassportId(passportId)
-                .orElseThrow(() -> new IllegalStateException("План существует, но не найден"));
-            
-            existingPlan.updateScale(scale);
-            existingPlan.updateExecutor(command.getExecutorName());
-            existingPlan.updatePlanDate(command.getPlanDate());
-            existingPlan.updateNotes(command.getNotes());
-            existingPlan.setImagePath(command.getImagePath());
-            
-            locationPlanRepository.update(existingPlan);
+        LocationPlan plan;
+        if (existingPlanOpt.isPresent()) {
+            plan = existingPlanOpt.get();
+            // Для существующего плана нужно пересоздать с новыми параметрами
+            // так как LocationPlan - immutable aggregate
+            if (plan.isManualDrawing()) {
+                plan = LocationPlan.createManualDrawing(
+                    passportId,
+                    scale,
+                    command.executorName(),
+                    command.planDate(),
+                    command.notes()
+                );
+                // Восстановим здания
+                for (var building : existingPlanOpt.get().getBuildings()) {
+                    plan.addBuilding(building);
+                }
+            }
+            // Для UPLOADED_IMAGE оставляем как есть
         } else {
-            LocationPlan newPlan = LocationPlan.create(passportId, scale, command.getExecutorName());
-            newPlan.updatePlanDate(command.getPlanDate());
-            newPlan.updateNotes(command.getNotes());
-            newPlan.setImagePath(command.getImagePath());
-            
-            locationPlanRepository.save(newPlan);
+            plan = LocationPlan.createManualDrawing(
+                passportId,
+                scale,
+                command.executorName(),
+                command.planDate(),
+                command.notes()
+            );
         }
-    }
-    
-    private void validateCommand(SaveLocationPlanCommand command) {
-        if (command == null) {
-            throw new ValidationException("Команда не может быть null");
-        }
-        if (command.getPassportId() == null || command.getPassportId().isBlank()) {
-            throw new ValidationException("ID паспорта обязателен");
-        }
-        if (command.getScaleDenominator() == null || command.getScaleDenominator().isBlank()) {
-            throw new ValidationException("Масштаб плана обязателен");
-        }
+        
+        locationPlanRepository.save(plan);
     }
 }
