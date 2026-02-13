@@ -18,6 +18,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import zakir.alekperov.application.locationplan.*;
 import zakir.alekperov.application.locationplan.usecases.UploadPlanImageUseCase;  // 🔧 Явный import!
+import zakir.alekperov.application.locationplan.commands.UploadPlanImageCommand;
 import zakir.alekperov.ui.dialogs.AddBuildingDialogController;
 import zakir.alekperov.ui.dialogs.ExportDialog;
 import zakir.alekperov.ui.export.CanvasExporter;
