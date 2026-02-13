@@ -23,11 +23,15 @@ public final class LocationPlanRepositoryImpl implements LocationPlanRepository 
     @Override
     public void save(LocationPlan plan) {
         transactionTemplate.executeInTransaction(connection -> {
-            boolean exists = existsByIdInternal(connection, plan.getPassportId());
-            if (exists) {
-                updateInternal(connection, plan);
-            } else {
-                insertInternal(connection, plan);
+            try {
+                boolean exists = existsByIdInternal(connection, plan.getPassportId());
+                if (exists) {
+                    updateInternal(connection, plan);
+                } else {
+                    insertInternal(connection, plan);
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException("Ошибка сохранения плана", e);
             }
         });
     }
@@ -35,7 +39,11 @@ public final class LocationPlanRepositoryImpl implements LocationPlanRepository 
     @Override
     public void update(LocationPlan plan) {
         transactionTemplate.executeInTransaction(connection -> {
-            updateInternal(connection, plan);
+            try {
+                updateInternal(connection, plan);
+            } catch (SQLException e) {
+                throw new RuntimeException("Ошибка обновления плана", e);
+            }
         });
     }
     
@@ -162,7 +170,11 @@ public final class LocationPlanRepositoryImpl implements LocationPlanRepository 
     @Override
     public boolean existsByPassportId(PassportId passportId) {
         return transactionTemplate.executeInTransaction(connection -> {
-            return existsByIdInternal(connection, passportId);
+            try {
+                return existsByIdInternal(connection, passportId);
+            } catch (SQLException e) {
+                throw new RuntimeException("Ошибка проверки существования плана", e);
+            }
         });
     }
     
