@@ -12,6 +12,7 @@ import java.util.Optional;
 
 /**
  * Ситуационный план здания.
+ * Aggregate Root для работы с планом расположения зданий на участке.
  * Поддерживает два режима: ручное рисование и загруженное изображение.
  * 
  * Инварианты:
@@ -20,6 +21,13 @@ import java.util.Optional;
  * - В режиме MANUAL_DRAWING должен быть масштаб и исполнитель
  * - В режиме UPLOADED_IMAGE должно быть изображение
  * - Нельзя одновременно иметь изображение и координаты зданий
+ * - Дата не может быть в будущем
+ * 
+ * Архитектурное решение:
+ * - Aggregate Root с явными factory методами
+ * - Два режима работы через enum
+ * - Инварианты проверяются в конструкторе
+ * - Методы модификации только для режима MANUAL_DRAWING
  */
 public final class LocationPlan {
     
@@ -100,8 +108,8 @@ public final class LocationPlan {
             this.uploadedImage = null;
             
         } else { // UPLOADED_IMAGE
-            this.scale = scale;
-            this.executorName = executorName;
+            this.scale = scale; // может быть null
+            this.executorName = executorName; // может быть null
             this.buildings = new ArrayList<>();
             this.uploadedImage = validateUploadedImage(uploadedImage);
         }
