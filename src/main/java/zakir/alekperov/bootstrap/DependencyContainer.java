@@ -3,6 +3,8 @@ package zakir.alekperov.bootstrap;
 import zakir.alekperov.infrastructure.database.*;
 import zakir.alekperov.infrastructure.persistence.locationplan.*;
 import zakir.alekperov.application.locationplan.*;
+import zakir.alekperov.application.locationplan.services.UploadPlanImageService;
+import zakir.alekperov.application.locationplan.usecases.UploadPlanImageUseCase;
 import zakir.alekperov.domain.locationplan.LocationPlanRepository;
 import zakir.alekperov.ui.tabs.commoninfo.CommonInfoTabController;
 import zakir.alekperov.ui.tabs.locationplan.LocationPlanTabController;
@@ -30,6 +32,7 @@ public final class DependencyContainer {
     private LoadLocationPlanUseCase loadLocationPlanUseCase;
     private AddBuildingCoordinatesUseCase addBuildingCoordinatesUseCase;
     private DeleteBuildingUseCase deleteBuildingUseCase;
+    private UploadPlanImageUseCase uploadPlanImageUseCase;
     
     // UI Layer - Controllers (создаются через FXML)
     private CommonInfoTabController commonInfoTabController;
@@ -78,6 +81,7 @@ public final class DependencyContainer {
         loadLocationPlanUseCase = new LoadLocationPlanService(locationPlanRepository);
         addBuildingCoordinatesUseCase = new AddBuildingCoordinatesService(locationPlanRepository);
         deleteBuildingUseCase = new DeleteBuildingService(locationPlanRepository);
+        uploadPlanImageUseCase = new UploadPlanImageService(locationPlanRepository);
     }
     
     /**
@@ -154,5 +158,9 @@ public final class DependencyContainer {
     
     public DeleteBuildingUseCase getDeleteBuildingUseCase() {
         return deleteBuildingUseCase;
+    }
+    
+    public UploadPlanImageUseCase getUploadPlanImageUseCase() {
+        return uploadPlanImageUseCase;
     }
 }
