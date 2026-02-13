@@ -8,32 +8,10 @@ import zakir.alekperov.domain.locationplan.PlanImage;
 import zakir.alekperov.domain.shared.PassportId;
 import zakir.alekperov.domain.shared.ValidationException;
 
-/**
- * Сервис для загрузки изображения ситуационного плана.
- * Реализация Use Case в Application слое.
- * 
- * Ответственность:
- * - Преобразование DTO в domain модели
- * - Вызов domain логики
- * - Вызов репозитория для персистентности
- * - Обработка исключений
- * 
- * Архитектурное решение:
- * - Final класс (не наследуется)
- * - Инжекция зависимостей через конструктор
- * - Проверка null в конструкторе
- * - ValidationException пробрасывается как есть
- * - Технические исключения оборачиваются в RuntimeException
- */
 public final class UploadPlanImageService implements UploadPlanImageUseCase {
     
     private final LocationPlanRepository locationPlanRepository;
     
-    /**
-     * Создать сервис.
-     * 
-     * @param locationPlanRepository репозиторий для работы с планами
-     */
     public UploadPlanImageService(LocationPlanRepository locationPlanRepository) {
         if (locationPlanRepository == null) {
             throw new IllegalArgumentException("locationPlanRepository не может быть null");
@@ -48,11 +26,9 @@ public final class UploadPlanImageService implements UploadPlanImageUseCase {
         }
         
         try {
-            // Преобразование DTO в domain модели
-            PassportId passportId = new PassportId(command.passportId());
+            PassportId passportId = PassportId.fromString(command.passportId());
             PlanImage planImage = new PlanImage(command.imageData(), command.fileName());
             
-            // Создание LocationPlan с изображением
             LocationPlan locationPlan = LocationPlan.createWithUploadedImage(
                 passportId,
                 planImage,
@@ -60,15 +36,11 @@ public final class UploadPlanImageService implements UploadPlanImageUseCase {
                 command.notes()
             );
             
-            // Сохранение через репозиторий
             locationPlanRepository.save(locationPlan);
             
         } catch (ValidationException e) {
-            // Пробрасываем ValidationException как есть
             throw e;
-            
         } catch (Exception e) {
-            // Оборачиваем технические исключения
             throw new RuntimeException("Ошибка загрузки изображения: " + e.getMessage(), e);
         }
     }

@@ -1,57 +1,45 @@
 package zakir.alekperov.application.locationplan;
 
-import zakir.alekperov.domain.shared.PassportId;
-import zakir.alekperov.domain.shared.ValidationException;
 import zakir.alekperov.domain.locationplan.*;
+import zakir.alekperov.domain.shared.PassportId;
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public final class AddBuildingCoordinatesService implements AddBuildingCoordinatesUseCase {
     private final LocationPlanRepository locationPlanRepository;
     
     public AddBuildingCoordinatesService(LocationPlanRepository locationPlanRepository) {
-        if (locationPlanRepository == null) {
-            throw new IllegalArgumentException("LocationPlanRepository не может быть null");
-        }
         this.locationPlanRepository = locationPlanRepository;
     }
     
     @Override
     public void execute(AddBuildingCoordinatesCommand command) {
-        validateCommand(command);
+        PassportId passportId = PassportId.fromString(command.passportId());
         
-        PassportId passportId = PassportId.fromString(command.getPassportId());
+        Optional<LocationPlan> planOptional = locationPlanRepository.findById(passportId);
+        if (planOptional.isEmpty()) {
+            throw new IllegalStateException("План не найден для passpor_id: " + command.passportId());
+        }
         
-        LocationPlan plan = locationPlanRepository.findByPassportId(passportId)
-            .orElseThrow(() -> new ValidationException(
-                "Ситуационный план для паспорта " + passportId + " не найден"
-            ));
+        LocationPlan plan = planOptional.get();
         
-        var points = command.getPoints().stream()
-            .map(p -> CoordinatePoint.fromStrings(p.x(), p.y()))
+        List<CoordinatePoint> points = command.points().stream()
+            .map(p -> new CoordinatePoint(
+                Double.parseDouble(p.x()),
+                Double.parseDouble(p.y())
+            ))
             .collect(Collectors.toList());
         
-        BuildingCoordinates coordinates = BuildingCoordinates.create(
-            command.getLitera(),
-            command.getDescription(),
+        BuildingLitera litera = new BuildingLitera(command.litera());
+        BuildingCoordinates buildingCoordinates = new BuildingCoordinates(
+            litera,
+            command.description(),
             points
         );
         
-        plan.addBuildingCoordinates(coordinates);
-        locationPlanRepository.update(plan);
-    }
-    
-    private void validateCommand(AddBuildingCoordinatesCommand command) {
-        if (command == null) {
-            throw new ValidationException("Команда не может быть null");
-        }
-        if (command.getPassportId() == null || command.getPassportId().isBlank()) {
-            throw new ValidationException("ID паспорта обязателен");
-        }
-        if (command.getLitera() == null || command.getLitera().isBlank()) {
-            throw new ValidationException("Литера здания обязательна");
-        }
-        if (command.getPoints() == null || command.getPoints().isEmpty()) {
-            throw new ValidationException("Координаты здания обязательны");
-        }
+        plan.addBuilding(buildingCoordinates);
+        
+        locationPlanRepository.save(plan);
     }
 }
