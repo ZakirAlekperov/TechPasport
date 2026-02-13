@@ -1,8 +1,9 @@
 package zakir.alekperov.infrastructure.persistence.locationplan;
 
-import zakir.alekperov.domain.shared.PassportId;
 import zakir.alekperov.domain.locationplan.*;
+import zakir.alekperov.domain.shared.PassportId;
 import zakir.alekperov.infrastructure.database.TransactionTemplate;
+
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -22,41 +23,117 @@ public final class LocationPlanRepositoryImpl implements LocationPlanRepository 
     @Override
     public void save(LocationPlan plan) {
         transactionTemplate.executeInTransaction(connection -> {
-            String sql = """
-                INSERT INTO location_plans (
-                    passport_id, scale_denominator, executor_name, 
-                    plan_date, notes, image_path
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                """;
-            
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setString(1, plan.getPassportId().getValue());
-                stmt.setInt(2, plan.getScale().getDenominator());
-                stmt.setString(3, plan.getExecutorName());
-                stmt.setString(4, plan.getPlanDate().toString());
-                stmt.setString(5, plan.getNotes());
-                stmt.setString(6, plan.getImagePath());
-                
-                int affected = stmt.executeUpdate();
-                if (affected == 0) {
-                    throw new RuntimeException("Не удалось сохранить ситуационный план");
-                }
-                
-                saveBuildingCoordinates(connection, plan);
-                
-            } catch (SQLException e) {
-                throw new RuntimeException("Ошибка сохранения ситуационного плана", e);
+            boolean exists = existsByIdInternal(connection, plan.getPassportId());
+            if (exists) {
+                updateInternal(connection, plan);
+            } else {
+                insertInternal(connection, plan);
             }
         });
     }
     
+    private void insertInternal(Connection connection, LocationPlan plan) throws SQLException {
+        String sql = """
+            INSERT INTO location_plan (
+                passport_id, plan_mode, scale_denominator, executor_name, 
+                plan_date, notes, uploaded_image_data, uploaded_image_filename, uploaded_image_format
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, plan.getPassportId().getValue());
+            stmt.setString(2, plan.getPlanMode().name());
+            
+            if (plan.getScale().isPresent()) {
+                stmt.setInt(3, plan.getScale().get().denominator());
+            } else {
+                stmt.setNull(3, Types.INTEGER);
+            }
+            
+            if (plan.getExecutorName().isPresent()) {
+                stmt.setString(4, plan.getExecutorName().get());
+            } else {
+                stmt.setNull(4, Types.VARCHAR);
+            }
+            
+            stmt.setString(5, plan.getPlanDate().toString());
+            stmt.setString(6, plan.getNotes());
+            
+            if (plan.getUploadedImage().isPresent()) {
+                PlanImage image = plan.getUploadedImage().get();
+                stmt.setBytes(7, image.getImageData());
+                stmt.setString(8, image.getFileName());
+                stmt.setString(9, image.getFormat());
+            } else {
+                stmt.setNull(7, Types.BLOB);
+                stmt.setNull(8, Types.VARCHAR);
+                stmt.setNull(9, Types.VARCHAR);
+            }
+            
+            stmt.executeUpdate();
+            saveBuildingCoordinates(connection, plan);
+        }
+    }
+    
+    private void updateInternal(Connection connection, LocationPlan plan) throws SQLException {
+        String sql = """
+            UPDATE location_plan
+            SET plan_mode = ?,
+                scale_denominator = ?,
+                executor_name = ?,
+                plan_date = ?,
+                notes = ?,
+                uploaded_image_data = ?,
+                uploaded_image_filename = ?,
+                uploaded_image_format = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE passport_id = ?
+            """;
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, plan.getPlanMode().name());
+            
+            if (plan.getScale().isPresent()) {
+                stmt.setInt(2, plan.getScale().get().denominator());
+            } else {
+                stmt.setNull(2, Types.INTEGER);
+            }
+            
+            if (plan.getExecutorName().isPresent()) {
+                stmt.setString(3, plan.getExecutorName().get());
+            } else {
+                stmt.setNull(3, Types.VARCHAR);
+            }
+            
+            stmt.setString(4, plan.getPlanDate().toString());
+            stmt.setString(5, plan.getNotes());
+            
+            if (plan.getUploadedImage().isPresent()) {
+                PlanImage image = plan.getUploadedImage().get();
+                stmt.setBytes(6, image.getImageData());
+                stmt.setString(7, image.getFileName());
+                stmt.setString(8, image.getFormat());
+            } else {
+                stmt.setNull(6, Types.BLOB);
+                stmt.setNull(7, Types.VARCHAR);
+                stmt.setNull(8, Types.VARCHAR);
+            }
+            
+            stmt.setString(9, plan.getPassportId().getValue());
+            
+            stmt.executeUpdate();
+            deleteBuildingCoordinates(connection, plan.getPassportId());
+            saveBuildingCoordinates(connection, plan);
+        }
+    }
+    
     @Override
-    public Optional<LocationPlan> findByPassportId(PassportId passportId) {
+    public Optional<LocationPlan> findById(PassportId passportId) {
         return transactionTemplate.executeInTransaction(connection -> {
             String sql = """
-                SELECT passport_id, scale_denominator, executor_name,
-                       plan_date, notes, image_path
-                FROM location_plans
+                SELECT passport_id, plan_mode, scale_denominator, executor_name,
+                       plan_date, notes, uploaded_image_data, uploaded_image_filename, uploaded_image_format
+                FROM location_plan
                 WHERE passport_id = ?
                 """;
             
@@ -65,191 +142,118 @@ public final class LocationPlanRepositoryImpl implements LocationPlanRepository 
                 
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
-                        LocationPlan plan = mapResultSetToPlan(rs, connection);
-                        return Optional.of(plan);
+                        return Optional.of(mapResultSetToPlan(rs, connection));
                     }
                     return Optional.empty();
                 }
             } catch (SQLException e) {
-                throw new RuntimeException("Ошибка поиска ситуационного плана", e);
-            }
-        });
-    }
-    
-    @Override
-    public void update(LocationPlan plan) {
-        transactionTemplate.executeInTransaction(connection -> {
-            String sql = """
-                UPDATE location_plans
-                SET scale_denominator = ?,
-                    executor_name = ?,
-                    plan_date = ?,
-                    notes = ?,
-                    image_path = ?,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE passport_id = ?
-                """;
-            
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setInt(1, plan.getScale().getDenominator());
-                stmt.setString(2, plan.getExecutorName());
-                stmt.setString(3, plan.getPlanDate().toString());
-                stmt.setString(4, plan.getNotes());
-                stmt.setString(5, plan.getImagePath());
-                stmt.setString(6, plan.getPassportId().getValue());
-                
-                int affected = stmt.executeUpdate();
-                if (affected == 0) {
-                    throw new RuntimeException("План не найден для обновления");
-                }
-                
-                deleteBuildingCoordinates(connection, plan.getPassportId());
-                saveBuildingCoordinates(connection, plan);
-                
-            } catch (SQLException e) {
-                throw new RuntimeException("Ошибка обновления ситуационного плана", e);
-            }
-        });
-    }
-    
-    @Override
-    public boolean existsByPassportId(PassportId passportId) {
-        return transactionTemplate.executeInTransaction(connection -> {
-            String sql = "SELECT COUNT(*) FROM location_plans WHERE passport_id = ?";
-            
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setString(1, passportId.getValue());
-                
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        return rs.getInt(1) > 0;
-                    }
-                    return false;
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException("Ошибка проверки существования плана", e);
-            }
-        });
-    }
-    
-    @Override
-    public void delete(PassportId passportId) {
-        transactionTemplate.executeInTransaction(connection -> {
-            String sql = "DELETE FROM location_plans WHERE passport_id = ?";
-            
-            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setString(1, passportId.getValue());
-                stmt.executeUpdate();
-            } catch (SQLException e) {
-                throw new RuntimeException("Ошибка удаления ситуационного плана", e);
+                throw new RuntimeException("Ошибка поиска плана", e);
             }
         });
     }
     
     private LocationPlan mapResultSetToPlan(ResultSet rs, Connection connection) throws SQLException {
-        String passportIdStr = rs.getString("passport_id");
-        int scaleDenominator = rs.getInt("scale_denominator");
-        String executorName = rs.getString("executor_name");
-        String planDateStr = rs.getString("plan_date");
+        PassportId passportId = PassportId.fromString(rs.getString("passport_id"));
+        PlanMode planMode = PlanMode.valueOf(rs.getString("plan_mode"));
+        LocalDate planDate = LocalDate.parse(rs.getString("plan_date"));
         String notes = rs.getString("notes");
-        String imagePath = rs.getString("image_path");
         
-        PassportId passportId = PassportId.fromString(passportIdStr);
-        PlanScale scale = PlanScale.fromDenominator(scaleDenominator);
-        LocalDate planDate = LocalDate.parse(planDateStr);
-        
-        List<BuildingCoordinates> buildings = loadBuildingCoordinates(connection, passportId);
-        
-        return LocationPlan.restore(
-            passportId, scale, buildings, executorName, planDate, notes, imagePath
-        );
+        if (planMode == PlanMode.UPLOADED_IMAGE) {
+            byte[] imageData = rs.getBytes("uploaded_image_data");
+            String fileName = rs.getString("uploaded_image_filename");
+            PlanImage planImage = new PlanImage(imageData, fileName);
+            
+            return LocationPlan.createWithUploadedImage(passportId, planImage, planDate, notes);
+        } else {
+            int scaleDenom = rs.getInt("scale_denominator");
+            String executorName = rs.getString("executor_name");
+            
+            PlanScale scale = new PlanScale(scaleDenom);
+            LocationPlan plan = LocationPlan.createManualDrawing(
+                passportId, scale, executorName, planDate, notes
+            );
+            
+            List<BuildingCoordinates> buildings = loadBuildingCoordinates(connection, passportId);
+            for (BuildingCoordinates building : buildings) {
+                plan.addBuilding(building);
+            }
+            
+            return plan;
+        }
     }
     
     private void saveBuildingCoordinates(Connection connection, LocationPlan plan) throws SQLException {
-        if (plan.getBuildingsCoordinates().isEmpty()) {
+        if (plan.getBuildings().isEmpty()) {
             return;
         }
         
-        String buildingSql = """
-            INSERT INTO building_coordinates (passport_id, litera, description)
-            VALUES (?, ?, ?)
+        String sql = """
+            INSERT INTO building_coordinates (passport_id, litera, description, point_index, x_coordinate, y_coordinate)
+            VALUES (?, ?, ?, ?, ?, ?)
             """;
         
-        String pointSql = """
-            INSERT INTO coordinate_points (building_coordinates_id, point_number, x, y)
-            VALUES (?, ?, ?, ?)
-            """;
-        
-        try (PreparedStatement buildingStmt = connection.prepareStatement(buildingSql, Statement.RETURN_GENERATED_KEYS);
-             PreparedStatement pointStmt = connection.prepareStatement(pointSql)) {
-            
-            for (BuildingCoordinates building : plan.getBuildingsCoordinates()) {
-                buildingStmt.setString(1, plan.getPassportId().getValue());
-                buildingStmt.setString(2, building.getLitera());
-                buildingStmt.setString(3, building.getDescription());
-                buildingStmt.executeUpdate();
-                
-                try (ResultSet generatedKeys = buildingStmt.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        long buildingId = generatedKeys.getLong(1);
-                        
-                        int pointNumber = 1;
-                        for (CoordinatePoint point : building.getPoints()) {
-                            pointStmt.setLong(1, buildingId);
-                            pointStmt.setInt(2, pointNumber++);
-                            pointStmt.setString(3, point.formatX());
-                            pointStmt.setString(4, point.formatY());
-                            pointStmt.addBatch();
-                        }
-                        pointStmt.executeBatch();
-                    }
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            for (BuildingCoordinates building : plan.getBuildings()) {
+                int pointIndex = 0;
+                for (CoordinatePoint point : building.getPoints()) {
+                    stmt.setString(1, plan.getPassportId().getValue());
+                    stmt.setString(2, building.getLitera().value());
+                    stmt.setString(3, building.getDescription());
+                    stmt.setInt(4, pointIndex++);
+                    stmt.setDouble(5, point.x());
+                    stmt.setDouble(6, point.y());
+                    stmt.addBatch();
                 }
             }
+            stmt.executeBatch();
         }
     }
     
     private List<BuildingCoordinates> loadBuildingCoordinates(Connection connection, PassportId passportId) throws SQLException {
-        List<BuildingCoordinates> buildings = new ArrayList<>();
-        
-        String buildingSql = """
-            SELECT id, litera, description
+        String sql = """
+            SELECT litera, description, point_index, x_coordinate, y_coordinate
             FROM building_coordinates
             WHERE passport_id = ?
-            ORDER BY litera
+            ORDER BY litera, point_index
             """;
         
-        String pointsSql = """
-            SELECT x, y
-            FROM coordinate_points
-            WHERE building_coordinates_id = ?
-            ORDER BY point_number
-            """;
+        List<BuildingCoordinates> buildings = new ArrayList<>();
+        String currentLitera = null;
+        String currentDesc = null;
+        List<CoordinatePoint> currentPoints = new ArrayList<>();
         
-        try (PreparedStatement buildingStmt = connection.prepareStatement(buildingSql);
-             PreparedStatement pointsStmt = connection.prepareStatement(pointsSql)) {
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, passportId.getValue());
             
-            buildingStmt.setString(1, passportId.getValue());
-            
-            try (ResultSet buildingRs = buildingStmt.executeQuery()) {
-                while (buildingRs.next()) {
-                    long buildingId = buildingRs.getLong("id");
-                    String litera = buildingRs.getString("litera");
-                    String description = buildingRs.getString("description");
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String litera = rs.getString("litera");
+                    String description = rs.getString("description");
+                    double x = rs.getDouble("x_coordinate");
+                    double y = rs.getDouble("y_coordinate");
                     
-                    List<CoordinatePoint> points = new ArrayList<>();
-                    pointsStmt.setLong(1, buildingId);
-                    
-                    try (ResultSet pointsRs = pointsStmt.executeQuery()) {
-                        while (pointsRs.next()) {
-                            String x = pointsRs.getString("x");
-                            String y = pointsRs.getString("y");
-                            points.add(CoordinatePoint.fromStrings(x, y));
+                    if (currentLitera == null || !currentLitera.equals(litera)) {
+                        if (currentLitera != null) {
+                            buildings.add(new BuildingCoordinates(
+                                new BuildingLitera(currentLitera),
+                                currentDesc,
+                                currentPoints
+                            ));
+                            currentPoints = new ArrayList<>();
                         }
+                        currentLitera = litera;
+                        currentDesc = description;
                     }
                     
-                    if (!points.isEmpty()) {
-                        buildings.add(BuildingCoordinates.create(litera, description, points));
-                    }
+                    currentPoints.add(new CoordinatePoint(x, y));
+                }
+                
+                if (currentLitera != null) {
+                    buildings.add(new BuildingCoordinates(
+                        new BuildingLitera(currentLitera),
+                        currentDesc,
+                        currentPoints
+                    ));
                 }
             }
         }
@@ -263,6 +267,21 @@ public final class LocationPlanRepositoryImpl implements LocationPlanRepository 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, passportId.getValue());
             stmt.executeUpdate();
+        }
+    }
+    
+    private boolean existsByIdInternal(Connection connection, PassportId passportId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM location_plan WHERE passport_id = ?";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, passportId.getValue());
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+                return false;
+            }
         }
     }
 }
