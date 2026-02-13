@@ -32,6 +32,13 @@ public final class LocationPlanRepositoryImpl implements LocationPlanRepository 
         });
     }
     
+    @Override
+    public void update(LocationPlan plan) {
+        transactionTemplate.executeInTransaction(connection -> {
+            updateInternal(connection, plan);
+        });
+    }
+    
     private void insertInternal(Connection connection, LocationPlan plan) throws SQLException {
         String sql = """
             INSERT INTO location_plan (
@@ -42,10 +49,10 @@ public final class LocationPlanRepositoryImpl implements LocationPlanRepository 
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, plan.getPassportId().getValue());
-            stmt.setString(2, plan.getPlanMode().name());
+            stmt.setString(2, plan.isManualDrawing() ? "MANUAL_DRAWING" : "UPLOADED_IMAGE");
             
             if (plan.getScale().isPresent()) {
-                stmt.setInt(3, plan.getScale().get().denominator());
+                stmt.setInt(3, plan.getScale().get().getDenominator());
             } else {
                 stmt.setNull(3, Types.INTEGER);
             }
@@ -91,10 +98,10 @@ public final class LocationPlanRepositoryImpl implements LocationPlanRepository 
             """;
         
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, plan.getPlanMode().name());
+            stmt.setString(1, plan.isManualDrawing() ? "MANUAL_DRAWING" : "UPLOADED_IMAGE");
             
             if (plan.getScale().isPresent()) {
-                stmt.setInt(2, plan.getScale().get().denominator());
+                stmt.setInt(2, plan.getScale().get().getDenominator());
             } else {
                 stmt.setNull(2, Types.INTEGER);
             }
@@ -128,7 +135,7 @@ public final class LocationPlanRepositoryImpl implements LocationPlanRepository 
     }
     
     @Override
-    public Optional<LocationPlan> findById(PassportId passportId) {
+    public Optional<LocationPlan> findByPassportId(PassportId passportId) {
         return transactionTemplate.executeInTransaction(connection -> {
             String sql = """
                 SELECT passport_id, plan_mode, scale_denominator, executor_name,
@@ -148,6 +155,27 @@ public final class LocationPlanRepositoryImpl implements LocationPlanRepository 
                 }
             } catch (SQLException e) {
                 throw new RuntimeException("Ошибка поиска плана", e);
+            }
+        });
+    }
+    
+    @Override
+    public boolean existsByPassportId(PassportId passportId) {
+        return transactionTemplate.executeInTransaction(connection -> {
+            return existsByIdInternal(connection, passportId);
+        });
+    }
+    
+    @Override
+    public void delete(PassportId passportId) {
+        transactionTemplate.executeInTransaction(connection -> {
+            String sql = "DELETE FROM location_plan WHERE passport_id = ?";
+            
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setString(1, passportId.getValue());
+                stmt.executeUpdate();
+            } catch (SQLException e) {
+                throw new RuntimeException("Ошибка удаления плана", e);
             }
         });
     }
@@ -197,11 +225,11 @@ public final class LocationPlanRepositoryImpl implements LocationPlanRepository 
                 int pointIndex = 0;
                 for (CoordinatePoint point : building.getPoints()) {
                     stmt.setString(1, plan.getPassportId().getValue());
-                    stmt.setString(2, building.getLitera().value());
+                    stmt.setString(2, building.getLitera().getValue());
                     stmt.setString(3, building.getDescription());
                     stmt.setInt(4, pointIndex++);
-                    stmt.setDouble(5, point.x());
-                    stmt.setDouble(6, point.y());
+                    stmt.setDouble(5, point.getX());
+                    stmt.setDouble(6, point.getY());
                     stmt.addBatch();
                 }
             }

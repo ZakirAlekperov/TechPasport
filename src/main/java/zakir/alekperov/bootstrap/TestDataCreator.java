@@ -19,7 +19,7 @@ public final class TestDataCreator {
         
         PassportId testPassportId = PassportId.fromString("TEST-PASSPORT-001");
         
-        Optional<LocationPlan> existingPlan = locationPlanRepository.findById(testPassportId);
+        Optional<LocationPlan> existingPlan = locationPlanRepository.findByPassportId(testPassportId);
         if (existingPlan.isPresent()) {
             System.out.println("⚠️  Тестовый план уже существует, пропускаем создание");
             return;
@@ -46,7 +46,7 @@ public final class TestDataCreator {
             
             System.out.println("✅ Тестовые данные сохранены!");
             
-            Optional<LocationPlan> loaded = locationPlanRepository.findById(testPassportId);
+            Optional<LocationPlan> loaded = locationPlanRepository.findByPassportId(testPassportId);
             if (loaded.isPresent()) {
                 System.out.println("\n✅ Проверка: план успешно загружен из БД");
                 System.out.println("   Масштаб: " + loaded.get().getScale().map(PlanScale::toDisplayString).orElse("N/A"));
@@ -55,7 +55,7 @@ public final class TestDataCreator {
             
             System.out.println("\n👉 Детали зданий:");
             for (BuildingCoordinates building : loaded.get().getBuildings()) {
-                System.out.println("   • Литера " + building.getLitera().value() + 
+                System.out.println("   • Литера " + building.getLitera().getValue() + 
                     ": " + building.getDescription() + 
                     " (" + building.getPoints().size() + " точек)");
             }
